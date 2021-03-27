@@ -1,0 +1,7 @@
+@valid
+@pretty
+@ugly
+jobs.#(color=red)#
+jobs.#(color=red)#.#
+jobs.#(color=red)#.name
+views.#(name=Onami).url

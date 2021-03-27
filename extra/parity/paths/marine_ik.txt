@@ -1,0 +1,15 @@
+@valid
+@pretty
+@ugly
+geometries.#.data.animations.#
+geometries.#.data.animations.3.hierarchy.20.keys.8.pos|@flatten.@reverse.0
+g*s.#.d*a.a*s.3.h*y.20.k*s.8.pos|@flatten.@reverse.0
+geometries.#(data.animations)
+geometries.#(type="Geometry")#|#(uuid%"C5CA037C-*")#|#(data.animations)#
+geometries.#(type="Geometry")#|#(uuid!%"C5CA037C-*")#|#(data.animations)#
+geometries.#(type="Geometry")#|#(uuid%"C5CA037C-*")#.data.animations.#.hierarchy.#
+geometries.#(type="Geometry")#|#(uuid%"C5CA037C-*")#.data.animations.#.hierarchy.#
+geometries.#(type="Geometry")#|#(uuid%"C5CA037C-*")#.data.animations.#.hierarchy.#.keys.#.time
+geometries.#(type="Geometry")#|#(uuid%"C5CA037C-*")#.data.animations.#.hierarchy.#.keys.#.time|@flatten|@flatten|@flatten.@reverse.#
+geometries.#(type="Geometry")#|#(uuid%"C5CA037C-*")#.data.animations.#.hierarchy.#.keys.#.time|@flatten|@flatten|@flatten.@reverse.500
+geometries.#(uuid%"C5CA037C")|{data.animations.#.hierarchy.#.keys.#(time>100)#|@flatten|@flatten}

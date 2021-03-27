@@ -1,0 +1,5 @@
+@valid
+@pretty
+@ugly
+features.#
+features.#.geometry.coordinates|@flatten:{"deep":true}|#

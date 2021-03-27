@@ -1,0 +1,11 @@
+[package]
+name = "fuzz"
+version = "0.1.0"
+authors = ["tidwall <joshbaker77@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+afl = "0.10"
+gjson = { path = "../.." }

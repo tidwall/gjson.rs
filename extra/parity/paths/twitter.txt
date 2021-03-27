@@ -1,0 +1,13 @@
+@valid
+@pretty
+@ugly
+statuses.1.user.name
+statuses.2.user
+statuses.99.user
+statuses.100.user
+statuses.101.user
+statuses.#
+statuses.@reverse
+statuses.@reverse.10.text
+statuses.@pretty
+search_metadata.count

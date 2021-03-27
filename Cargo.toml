@@ -1,0 +1,13 @@
+[package]
+name = "gjson"
+version = "0.7.0"
+authors = ["Josh Baker <joshbaker77@gmail.com>"]
+edition = "2018"
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/tidwall/gjson.rs"
+documentation = "https://docs.rs/gjson/"
+description = "Get JSON values quickly"
+
+[lib]
+doctest = false

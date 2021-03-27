@@ -1,0 +1,6 @@
+@valid
+@pretty
+@ugly
+venueNames.@pretty
+performances.#.seatCategories|@flatten.@join
+performances.#.seatCategories|@flatten.@join:{"preserve":true}

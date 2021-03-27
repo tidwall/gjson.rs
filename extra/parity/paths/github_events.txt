@@ -1,0 +1,8 @@
+@valid
+@pretty
+@ugly
+#
+#.type
+#(payload.forkee.has_wiki=true)#|#
+#(payload.commits)#|#
+#(payload.commits.#(author.name="Martin Geisse"))#|#
