@@ -38,7 +38,7 @@ const JSON: &str = r#"{"name":{"first":"Janet","last":"Prichard"},"age":47}"#;
 
 fn main() {
     let value = gjson::get(JSON, "name.last");
-	println!("{}", value);
+    println!("{}", value);
 }
 ```
 
