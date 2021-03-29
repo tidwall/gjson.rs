@@ -263,6 +263,12 @@ fn valid_number(json: &[u8], mut i: usize) -> (bool, usize) {
     // sign
     if json[i] == b'-' {
         i += 1;
+		if i == json.len() {
+			return (false,i);
+		}
+		if json[i] < b'0' || json[i] > b'9' {
+			return (false, i);
+		}
     }
     // int
     if i == json.len() {
@@ -363,6 +369,7 @@ mod test {
         assert_eq!(valid("00"), false);
         assert_eq!(valid("-00"), false);
         assert_eq!(valid("-."), false);
+        assert_eq!(valid("-.123"), false);
         assert_eq!(valid("0.0"), true);
         assert_eq!(valid("10.0"), true);
         assert_eq!(valid("10e1"), true);
@@ -427,6 +434,10 @@ mod test {
         assert_eq!(valid(r#""a\\b\\\uFFAAa""#), true);
         assert_eq!(valid(r#""a\\b\\\uFFAZa""#), false);
         assert_eq!(valid(r#""a\\b\\\uFFA""#), false);
+        assert_eq!(valid(r#""a\\b\\\uFFAZa""#), false);
+        assert_eq!(valid(r#""#), false);
+        assert_eq!(valid("[-]"), false);
+        assert_eq!(valid("[-.123]"), false);
     }
 
     #[test]
