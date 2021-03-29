@@ -112,7 +112,7 @@ value.u8()
 value.u16()
 value.u32()
 value.u64()
-value.f64()
+value.f32()
 value.f64()
 value.bool()
 value.str()    // a string representation
