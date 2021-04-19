@@ -15,7 +15,7 @@
 GJSON is a Rust crate that provides a fast and [simple](#get-a-value) way to get values from a json document.
 It has features such as [one line retrieval](#get-a-value), [dot notation paths](#path-syntax), [iteration](#iterate-through-an-object-or-array), and [parsing json lines](#json-lines).
 
-This library is uses the identical path syntax as the [Go version](https://github.com/tidwall/gjson).
+This library uses the identical path syntax as the [Go version](https://github.com/tidwall/gjson).
 
 Getting Started
 ===============
