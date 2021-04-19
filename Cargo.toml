@@ -1,6 +1,6 @@
 [package]
 name = "gjson"
-version = "0.7.1"
+version = "0.7.5"
 authors = ["Josh Baker <joshbaker77@gmail.com>"]
 edition = "2018"
 license = "MIT"
