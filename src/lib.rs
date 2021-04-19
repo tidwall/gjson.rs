@@ -788,9 +788,21 @@ fn get_arr_child_at_index<'a>(
 }
 
 fn query_matches<'a>(value: &Value<'a>, op: &str, rpv: &str) -> bool {
+    let uesc_str: String;
     let mut rpv = rpv.as_bytes();
     if rpv.len() > 2 && rpv[0] == b'"' && rpv[rpv.len() - 1] == b'"' {
-        rpv = &rpv[1..rpv.len() - 1]
+        let mut overwrite = false;
+        for c in rpv {
+            if *c == b'\\' {
+                overwrite = true;
+                uesc_str = unescape(tostr(rpv));
+                rpv = uesc_str.as_bytes();
+                break;
+            }
+        }
+        if !overwrite {
+            rpv = &rpv[1..rpv.len() - 1];
+        }
     }
     let rpv = tostr(rpv);
     if !value.exists() {

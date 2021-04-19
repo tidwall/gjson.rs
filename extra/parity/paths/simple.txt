@@ -1,0 +1,5 @@
+@valid
+@pretty
+@ugly
+friends.#(last="Murphy").age
+friends.#(last="Mur\"phy").age

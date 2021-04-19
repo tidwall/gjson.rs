@@ -36,6 +36,7 @@ RUST_RESULT="$(rust-cli/target/$RUST_TARGET/rust-cli "$1" "$2")"
 # Get the Go result
 cd go-cli
 if [[ ! -f go-cli ]]; then
+    go mod tidy
     go build -o go-cli main.go > /dev/null
 fi
 cd ..

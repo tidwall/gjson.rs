@@ -300,3 +300,23 @@ fn array_value() {
     }
     assert_eq!(res, "McLaughlin\nHunter\nHarold\n");
 }
+
+#[test]
+fn escaped_query_string() {
+    const JSON: &str = r#"
+    {
+        "name": {"first": "Tom", "last": "Anderson"},
+        "age":37,
+        "children": ["Sara","Alex","Jack"],
+        "fav.movie": "Deer Hunter",
+        "friends": [
+          {"first": "Dale", "last": "Mur\"phy", "age": 44, "nets": ["ig", "fb", "tw"]},
+          {"first": "Roger", "last": "Craig", "age": 68, "nets": ["fb", "tw"]},
+          {"first": "Jane", "last": "Murphy", "age": 47, "nets": ["ig", "tw"]}
+        ]
+      }
+    }
+    "#;
+    assert_eq!(get(JSON, r#"friends.#(last="Mur\"phy").age"#).i32(), 44);
+    assert_eq!(get(JSON, r#"friends.#(last="Murphy").age"#).i32(), 47);
+}
