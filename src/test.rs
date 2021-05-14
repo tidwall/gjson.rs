@@ -320,3 +320,28 @@ fn escaped_query_string() {
     assert_eq!(get(JSON, r#"friends.#(last="Mur\"phy").age"#).i32(), 44);
     assert_eq!(get(JSON, r#"friends.#(last="Murphy").age"#).i32(), 47);
 }
+
+
+#[test]
+fn bool_convert_query() {
+    const JSON: &str = r#"
+    {
+		"vals": [
+			{ "a": 1, "b": true },
+			{ "a": 2, "b": true },
+			{ "a": 3, "b": false },
+			{ "a": 4, "b": "0" },
+			{ "a": 5, "b": 0 },
+			{ "a": 6, "b": "1" },
+			{ "a": 7, "b": 1 },
+			{ "a": 8, "b": "true" },
+			{ "a": 9, "b": false },
+			{ "a": 10, "b": null },
+			{ "a": 11 }
+		]
+	}
+    "#;
+
+    assert_eq!(get(JSON, r#"vals.#(b==~true)#.a"#).json(), "[1,2,6,7,8]");
+    // assert_eq!(get(JSON, r#"vals.#(b==~false)#.a"#).json(), "[3,4,5,9,10,11]");
+}

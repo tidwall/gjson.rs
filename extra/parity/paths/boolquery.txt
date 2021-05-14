@@ -1,0 +1,5 @@
+@valid
+@pretty
+@ugly
+vals.#(b==~true)#.a
+vals.#(b==~false)#.a

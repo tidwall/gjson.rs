@@ -787,7 +787,7 @@ fn get_arr_child_at_index<'a>(
     }
 }
 
-fn query_matches<'a>(value: &Value<'a>, op: &str, rpv: &str) -> bool {
+fn query_matches<'a>(valin: &Value<'a>, op: &str, rpv: &str) -> bool {
     let uesc_str: String;
     let mut rpv = rpv.as_bytes();
     if rpv.len() > 2 && rpv[0] == b'"' && rpv[rpv.len() - 1] == b'"' {
@@ -804,6 +804,20 @@ fn query_matches<'a>(value: &Value<'a>, op: &str, rpv: &str) -> bool {
             rpv = &rpv[1..rpv.len() - 1];
         }
     }
+    let mut value = valin;
+    let mut tvalue = Value::default();
+	if rpv.len() > 0 && rpv[0] == b'~' {
+		// convert to bool
+		rpv = &rpv[1..];
+		if value.bool() {
+            tvalue.slice = "true";
+            tvalue.info = INFO_TRUE;
+		} else {
+            tvalue.slice = "false";
+			tvalue.info = INFO_FALSE;
+		}
+        value = &tvalue;
+	}
     let rpv = tostr(rpv);
     if !value.exists() {
         return false;
