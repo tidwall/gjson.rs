@@ -26,7 +26,7 @@ Put this in your Cargo.toml:
 
 ```toml
 [dependencies]
-gjson = "0.7"
+gjson = "0.8"
 ```
 
 ## Get a value
