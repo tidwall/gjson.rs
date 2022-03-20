@@ -255,8 +255,8 @@ LINE交換できる？:あぁ……ごめん✋
 
         let raw1 = r#""\n第一印象:なんか怖っ！\n今の印象:とりあえずキモい。噛み合わない\n好きなところ:ぶすでキモいとこ😋✨✨\n思い出:んーーー、ありすぎ😊❤️\nLINE交換できる？:あぁ……ごめん✋\nトプ画をみて:照れますがな😘✨\n一言:お前は一生もんのダチ💖""#;
         let raw2 = r#""\n\u7B2C\u4E00\u5370\u8C61:\u306A\u3093\u304B\u6016\u3063\uFF01\n\u4ECA\u306E\u5370\u8C61:\u3068\u308A\u3042\u3048\u305A\u30AD\u30E2\u3044\u3002\u565B\u307F\u5408\u308F\u306A\u3044\n\u597D\u304D\u306A\u3068\u3053\u308D:\u3076\u3059\u3067\u30AD\u30E2\u3044\u3068\u3053\uD83D\uDE0B\u2728\u2728\n\u601D\u3044\u51FA:\u3093\u30FC\u30FC\u30FC\u3001\u3042\u308A\u3059\u304E\uD83D\uDE0A\u2764\uFE0F\nLINE\u4EA4\u63DB\u3067\u304D\u308B\uFF1F:\u3042\u3041\u2026\u2026\u3054\u3081\u3093\u270B\n\u30C8\u30D7\u753B\u3092\u307F\u3066:\u7167\u308C\u307E\u3059\u304C\u306A\uD83D\uDE18\u2728\n\u4E00\u8A00:\u304A\u524D\u306F\u4E00\u751F\u3082\u3093\u306E\u30C0\u30C1\uD83D\uDC96""#;
-        assert_eq!(text, super::unescape(raw1));
-        assert_eq!(text, super::unescape(raw2));
+        assert_eq!(text, super::unescape(raw1.as_bytes()));
+        assert_eq!(text, super::unescape(raw2.as_bytes()));
         assert_eq!(super::escape(text), raw1);
 
         assert_eq!(
@@ -267,15 +267,15 @@ LINE交換できる？:あぁ……ごめん✋
 
     #[test]
     fn unescape() {
-        assert_eq!(super::unescape(r#""adsf"#), "");
-        assert_eq!(super::unescape(r#""ad\sf""#), "ad");
+        assert_eq!(super::unescape(r#""adsf"#.as_bytes()), "");
+        assert_eq!(super::unescape(r#""ad\sf""#.as_bytes()), "ad");
         assert_eq!(
-            super::unescape(r#""ad\"\\\/\b\f\n\r\tsf""#),
+            super::unescape(r#""ad\"\\\/\b\f\n\r\tsf""#.as_bytes()),
             "ad\"\\/\u{08}\u{0C}\n\r\tsf"
         );
-        assert_eq!(super::unescape(r#""ad\uD83Dsf""#), "ad�sf");
-        assert_eq!(super::unescape(r#""ad\uD83D\usf""#), "ad�");
-        assert_eq!(super::unescape(r#""ad\uD83D\uxxxxsf""#), "ad�sf");
-        assert_eq!(super::unescape(r#""ad\uD83D\u00FFsf""#), "ad�sf");
+        assert_eq!(super::unescape(r#""ad\uD83Dsf""#.as_bytes()), "ad�sf");
+        assert_eq!(super::unescape(r#""ad\uD83D\usf""#.as_bytes()), "ad�");
+        assert_eq!(super::unescape(r#""ad\uD83D\uxxxxsf""#.as_bytes()), "ad�sf");
+        assert_eq!(super::unescape(r#""ad\uD83D\u00FFsf""#.as_bytes()), "ad�sf");
     }
 }

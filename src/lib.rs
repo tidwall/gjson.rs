@@ -174,7 +174,7 @@ fn json_from_owned<'a>(owned: String, index: Option<usize>, info: InfoBits) -> V
 fn json_unescape_string<'a>(json: &mut Value<'a>) {
     if json.info & (INFO_STRING | INFO_ESC) == (INFO_STRING | INFO_ESC) {
         // Escaped string. We must unescape it into a new allocated string.
-        json.uescstr = unescape(&json.data);
+        json.uescstr = unescape(&json.data.as_bytes());
     }
 }
 
@@ -205,7 +205,7 @@ impl<'a> Value<'a> {
             Kind::True => 1.0,
             Kind::String => {
                 if self.info & INFO_ESC == INFO_ESC {
-                    raw_to_f64(&unescape(tostr(raw)))
+                    raw_to_f64(&unescape(raw))
                 } else {
                     raw_to_f64(tostr(&raw[1..raw.len() - 1]))
                 }
@@ -225,7 +225,7 @@ impl<'a> Value<'a> {
             Kind::True => 1,
             Kind::String => {
                 if self.info & INFO_ESC == INFO_ESC {
-                    raw_to_i64(&unescape(tostr(raw)))
+                    raw_to_i64(&unescape(raw))
                 } else {
                     raw_to_i64(tostr(&raw[1..raw.len() - 1]))
                 }
@@ -241,7 +241,7 @@ impl<'a> Value<'a> {
             Kind::True => 1,
             Kind::String => {
                 if self.info & INFO_ESC == INFO_ESC {
-                    raw_to_u64(&unescape(tostr(raw)))
+                    raw_to_u64(&unescape(raw))
                 } else {
                     raw_to_u64(tostr(&raw[1..raw.len() - 1]))
                 }
@@ -681,7 +681,7 @@ fn get_obj<'a>(json: &'a [u8], mut i: usize, path: Path<'a>) -> (Value<'a>, usiz
 fn key_match(key: &[u8], info: InfoBits, path: &Path) -> bool {
     let comp = tostr(path.comp);
     if info & INFO_ESC == INFO_ESC {
-        let key = unescape(tostr(key));
+        let key = unescape(key);
         if path.pat || path.esc {
             pmatch(comp, key)
         } else {
@@ -784,7 +784,7 @@ fn query_matches<'a>(valin: &Value<'a>, op: &str, rpv: &str) -> bool {
         for c in rpv {
             if *c == b'\\' {
                 overwrite = true;
-                uesc_str = unescape(tostr(rpv));
+                uesc_str = unescape(rpv);
                 rpv = uesc_str.as_bytes();
                 break;
             }
