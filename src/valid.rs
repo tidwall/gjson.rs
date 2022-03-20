@@ -65,8 +65,7 @@ fn isspace(c: u8) -> bool {
 /// }
 /// let value = gjson::get(json, "name.last");
 /// ```
-pub fn valid(json: &str) -> bool {
-    let json = json.as_bytes();
+pub fn valid(json: &[u8]) -> bool {
     let mut i = 0;
     let (valid, next_i) = valid_any(json, i);
     if !valid {
@@ -365,100 +364,106 @@ mod test {
 
     #[test]
     fn basic() {
-        assert_eq!(valid("0"), true);
-        assert_eq!(valid("00"), false);
-        assert_eq!(valid("-00"), false);
-        assert_eq!(valid("-."), false);
-        assert_eq!(valid("-.123"), false);
-        assert_eq!(valid("0.0"), true);
-        assert_eq!(valid("10.0"), true);
-        assert_eq!(valid("10e1"), true);
-        assert_eq!(valid("10EE"), false);
-        assert_eq!(valid("10E-"), false);
-        assert_eq!(valid("10E+"), false);
-        assert_eq!(valid("10E123"), true);
-        assert_eq!(valid("10E-123"), true);
-        assert_eq!(valid("10E-0123"), true);
-        assert_eq!(valid(""), false);
-        assert_eq!(valid(" "), false);
-        assert_eq!(valid("{}"), true);
-        assert_eq!(valid("{"), false);
-        assert_eq!(valid("-"), false);
-        assert_eq!(valid("-1"), true);
-        assert_eq!(valid("-1."), false);
-        assert_eq!(valid("-1.0"), true);
-        assert_eq!(valid(" -1.0"), true);
-        assert_eq!(valid(" -1.0 "), true);
-        assert_eq!(valid("-1.0 "), true);
-        assert_eq!(valid("-1.0 i"), false);
-        assert_eq!(valid("-1.0 i"), false);
-        assert_eq!(valid("true"), true);
-        assert_eq!(valid(" true"), true);
-        assert_eq!(valid(" true "), true);
-        assert_eq!(valid(" True "), false);
-        assert_eq!(valid(" tru"), false);
-        assert_eq!(valid("false"), true);
-        assert_eq!(valid(" false"), true);
-        assert_eq!(valid(" false "), true);
-        assert_eq!(valid(" False "), false);
-        assert_eq!(valid(" fals"), false);
-        assert_eq!(valid("null"), true);
-        assert_eq!(valid(" null"), true);
-        assert_eq!(valid(" null "), true);
-        assert_eq!(valid(" Null "), false);
-        assert_eq!(valid(" nul"), false);
-        assert_eq!(valid(" []"), true);
-        assert_eq!(valid(" [true]"), true);
-        assert_eq!(valid(" [ true, null ]"), true);
-        assert_eq!(valid(" [ true,]"), false);
-        assert_eq!(valid(r#"{"hello":"world"}"#), true);
-        assert_eq!(valid(r#"{ "hello": "world" }"#), true);
-        assert_eq!(valid(r#"{ "hello": "world", }"#), false);
-        assert_eq!(valid(r#"{"a":"b",}"#), false);
-        assert_eq!(valid(r#"{"a":"b","a"}"#), false);
-        assert_eq!(valid(r#"{"a":"b","a":}"#), false);
-        assert_eq!(valid(r#"{"a":"b","a":1}"#), true);
-        assert_eq!(valid(r#"{"a":"b",2"1":2}"#), false);
-        assert_eq!(valid(r#"{"a":"b","a": 1, "c":{"hi":"there"} }"#), true);
+        assert_eq!(valid("0".as_bytes()), true);
+        assert_eq!(valid("00".as_bytes()), false);
+        assert_eq!(valid("-00".as_bytes()), false);
+        assert_eq!(valid("-.".as_bytes()), false);
+        assert_eq!(valid("-.123".as_bytes()), false);
+        assert_eq!(valid("0.0".as_bytes()), true);
+        assert_eq!(valid("10.0".as_bytes()), true);
+        assert_eq!(valid("10e1".as_bytes()), true);
+        assert_eq!(valid("10EE".as_bytes()), false);
+        assert_eq!(valid("10E-".as_bytes()), false);
+        assert_eq!(valid("10E+".as_bytes()), false);
+        assert_eq!(valid("10E123".as_bytes()), true);
+        assert_eq!(valid("10E-123".as_bytes()), true);
+        assert_eq!(valid("10E-0123".as_bytes()), true);
+        assert_eq!(valid("".as_bytes()), false);
+        assert_eq!(valid(" ".as_bytes()), false);
+        assert_eq!(valid("{}".as_bytes()), true);
+        assert_eq!(valid("{".as_bytes()), false);
+        assert_eq!(valid("-".as_bytes()), false);
+        assert_eq!(valid("-1".as_bytes()), true);
+        assert_eq!(valid("-1.".as_bytes()), false);
+        assert_eq!(valid("-1.0".as_bytes()), true);
+        assert_eq!(valid(" -1.0".as_bytes()), true);
+        assert_eq!(valid(" -1.0 ".as_bytes()), true);
+        assert_eq!(valid("-1.0 ".as_bytes()), true);
+        assert_eq!(valid("-1.0 i".as_bytes()), false);
+        assert_eq!(valid("-1.0 i".as_bytes()), false);
+        assert_eq!(valid("true".as_bytes()), true);
+        assert_eq!(valid(" true".as_bytes()), true);
+        assert_eq!(valid(" true ".as_bytes()), true);
+        assert_eq!(valid(" True ".as_bytes()), false);
+        assert_eq!(valid(" tru".as_bytes()), false);
+        assert_eq!(valid("false".as_bytes()), true);
+        assert_eq!(valid(" false".as_bytes()), true);
+        assert_eq!(valid(" false ".as_bytes()), true);
+        assert_eq!(valid(" False ".as_bytes()), false);
+        assert_eq!(valid(" fals".as_bytes()), false);
+        assert_eq!(valid("null".as_bytes()), true);
+        assert_eq!(valid(" null".as_bytes()), true);
+        assert_eq!(valid(" null ".as_bytes()), true);
+        assert_eq!(valid(" Null ".as_bytes()), false);
+        assert_eq!(valid(" nul".as_bytes()), false);
+        assert_eq!(valid(" []".as_bytes()), true);
+        assert_eq!(valid(" [true]".as_bytes()), true);
+        assert_eq!(valid(" [ true, null ]".as_bytes()), true);
+        assert_eq!(valid(" [ true,]".as_bytes()), false);
+        assert_eq!(valid(r#"{"hello":"world"}"#.as_bytes()), true);
+        assert_eq!(valid(r#"{ "hello": "world" }"#.as_bytes()), true);
+        assert_eq!(valid(r#"{ "hello": "world", }"#.as_bytes()), false);
+        assert_eq!(valid(r#"{"a":"b",}"#.as_bytes()), false);
+        assert_eq!(valid(r#"{"a":"b","a"}"#.as_bytes()), false);
+        assert_eq!(valid(r#"{"a":"b","a":}"#.as_bytes()), false);
+        assert_eq!(valid(r#"{"a":"b","a":1}"#.as_bytes()), true);
+        assert_eq!(valid(r#"{"a":"b",2"1":2}"#.as_bytes()), false);
         assert_eq!(
-            valid(r#"{"a":"b","a": 1, "c":{"hi":"there", "easy":["going",{"mixed":"bag"}]} }"#),
+            valid(r#"{"a":"b","a": 1, "c":{"hi":"there"} }"#.as_bytes()),
             true
         );
-        assert_eq!(valid(r#""""#), true);
-        assert_eq!(valid(r#"""#), false);
-        assert_eq!(valid(r#""\n""#), true);
-        assert_eq!(valid(r#""\""#), false);
-        assert_eq!(valid(r#""\\""#), true);
-        assert_eq!(valid(r#""a\\b""#), true);
-        assert_eq!(valid(r#""a\\b\\\"a""#), true);
-        assert_eq!(valid(r#""a\\b\\\uFFAAa""#), true);
-        assert_eq!(valid(r#""a\\b\\\uFFAZa""#), false);
-        assert_eq!(valid(r#""a\\b\\\uFFA""#), false);
-        assert_eq!(valid(r#""a\\b\\\uFFAZa""#), false);
-        assert_eq!(valid(r#""#), false);
-        assert_eq!(valid("[-]"), false);
-        assert_eq!(valid("[-.123]"), false);
+        assert_eq!(
+            valid(
+                r#"{"a":"b","a": 1, "c":{"hi":"there", "easy":["going",{"mixed":"bag"}]} }"#
+                    .as_bytes()
+            ),
+            true
+        );
+        assert_eq!(valid(r#""""#.as_bytes()), true);
+        assert_eq!(valid(r#"""#.as_bytes()), false);
+        assert_eq!(valid(r#""\n""#.as_bytes()), true);
+        assert_eq!(valid(r#""\""#.as_bytes()), false);
+        assert_eq!(valid(r#""\\""#.as_bytes()), true);
+        assert_eq!(valid(r#""a\\b""#.as_bytes()), true);
+        assert_eq!(valid(r#""a\\b\\\"a""#.as_bytes()), true);
+        assert_eq!(valid(r#""a\\b\\\uFFAAa""#.as_bytes()), true);
+        assert_eq!(valid(r#""a\\b\\\uFFAZa""#.as_bytes()), false);
+        assert_eq!(valid(r#""a\\b\\\uFFA""#.as_bytes()), false);
+        assert_eq!(valid(r#""a\\b\\\uFFAZa""#.as_bytes()), false);
+        assert_eq!(valid(r#""#.as_bytes()), false);
+        assert_eq!(valid("[-]".as_bytes()), false);
+        assert_eq!(valid("[-.123]".as_bytes()), false);
     }
 
     #[test]
     fn xcover() {
         // code coverage
-        assert_eq!(valid(r#"{"hel\lo":"world"}"#), false);
-        assert_eq!(valid(r#"{"hello"  "#), false);
-        assert_eq!(valid(r#"{"hello"  : true "#), false);
-        assert_eq!(valid(r#"{"hello"  : true x"#), false);
-        assert_eq!(valid(r#"{"hello"  : true , "#), false);
-        assert_eq!(valid(r#"[  "#), false);
-        assert_eq!(valid(r#"[ true "#), false);
-        assert_eq!(valid(r#"[ true x "#), false);
-        assert_eq!(valid(r#"[ true , "#), false);
+        assert_eq!(valid(r#"{"hel\lo":"world"}"#.as_bytes()), false);
+        assert_eq!(valid(r#"{"hello"  "#.as_bytes()), false);
+        assert_eq!(valid(r#"{"hello"  : true "#.as_bytes()), false);
+        assert_eq!(valid(r#"{"hello"  : true x"#.as_bytes()), false);
+        assert_eq!(valid(r#"{"hello"  : true , "#.as_bytes()), false);
+        assert_eq!(valid(r#"[  "#.as_bytes()), false);
+        assert_eq!(valid(r#"[ true "#.as_bytes()), false);
+        assert_eq!(valid(r#"[ true x "#.as_bytes()), false);
+        assert_eq!(valid(r#"[ true , "#.as_bytes()), false);
 
-        assert_eq!(valid("[ \"hel\u{0}\" ]"), false);
-        assert_eq!(valid(r#"[ "hel\"#), false);
-        assert_eq!(valid(r#"[ "hel\u"#), false);
+        assert_eq!(valid("[ \"hel\u{0}\" ]".as_bytes()), false);
+        assert_eq!(valid(r#"[ "hel\"#.as_bytes()), false);
+        assert_eq!(valid(r#"[ "hel\u"#.as_bytes()), false);
 
-        assert_eq!(valid(r#"[ 123.x ]"#), false);
-        assert_eq!(valid(r#"[ 123.0e"#), false);
-        assert_eq!(valid(r#"[ 123.0e1f"#), false);
+        assert_eq!(valid(r#"[ 123.x ]"#.as_bytes()), false);
+        assert_eq!(valid(r#"[ 123.0e"#.as_bytes()), false);
+        assert_eq!(valid(r#"[ 123.0e1f"#.as_bytes()), false);
     }
 }

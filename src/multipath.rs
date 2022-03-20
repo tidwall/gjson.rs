@@ -115,13 +115,12 @@ fn exec_arr<'a>(json: &'a [u8], path: Path<'a>) -> (Value<'a>, Path<'a>) {
             if index > 0 {
                 out.push(b',');
             }
-            out.extend(res.data.as_bytes());
+            out.extend(res.data.as_ref());
             index += 1;
         }
     });
     out.push(b']');
-    let json = unsafe { String::from_utf8_unchecked(out) };
-    (json_from_owned(json, None, INFO_ARRAY), path)
+    (json_from_owned(out, None, INFO_ARRAY), path)
 }
 
 fn exec_obj<'a>(json: &'a [u8], path: Path<'a>) -> (Value<'a>, Path<'a>) {
@@ -138,11 +137,10 @@ fn exec_obj<'a>(json: &'a [u8], path: Path<'a>) -> (Value<'a>, Path<'a>) {
             }
             extend_json_string(&mut out, key);
             out.push(b':');
-            out.extend(res.data.as_bytes());
+            out.extend(res.data.as_ref());
             index += 1;
         }
     });
     out.push(b'}');
-    let json = unsafe { String::from_utf8_unchecked(out) };
-    (json_from_owned(json, None, INFO_OBJECT), path)
+    (json_from_owned(out, None, INFO_OBJECT), path)
 }

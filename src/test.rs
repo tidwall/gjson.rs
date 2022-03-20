@@ -68,7 +68,10 @@ fn modifiers() {
     ]}"#,
         "user.@join.@ugly",
     );
-    assert_eq!(res.data, r#"{"first":"tom","age":68,"last":"anderson"}"#);
+    assert_eq!(
+        res.data,
+        r#"{"first":"tom","age":68,"last":"anderson"}"#.as_bytes()
+    );
     let res = get(
         r#"{"user":[
         {"first":"tom","age":72},
@@ -78,16 +81,16 @@ fn modifiers() {
     );
     assert_eq!(
         res.data,
-        r#"{"first":"tom","age":72,"last":"anderson","age":68}"#
+        r#"{"first":"tom","age":72,"last":"anderson","age":68}"#.as_bytes()
     );
 
     assert_eq!(
         get("[1,[2],[3,4],[5,[6,7]]]", "@flatten").data,
-        "[1,2,3,4,5,[6,7]]"
+        "[1,2,3,4,5,[6,7]]".as_bytes()
     );
     assert_eq!(
         get("[1,[2],[3,4],[5,[6,7]]]", r#"@flatten:{"deep":true}"#).data,
-        "[1,2,3,4,5,6,7]"
+        "[1,2,3,4,5,6,7]".as_bytes()
     );
 }
 
@@ -103,7 +106,7 @@ fn iterator() {
                 if index > 0 {
                     res.push_str(",");
                 }
-                res.push_str(&value.get("user.name").data);
+                res.push_str(&String::from_utf8_lossy(&value.get("user.name").data));
                 index += 1;
                 return true;
             });
@@ -140,7 +143,7 @@ fn query() {
         "statuses.#(user.profile_link_color!=0084B4)#.id|@ugly",
     );
     assert_eq!(
-        res.str(),
+        res.str().as_bytes(),
         pretty::ugly(
             "[505874919020699648,505874915338104833,505874914897690624,
         505874893154426881,505874882870009856,505874882228281345,
@@ -162,7 +165,7 @@ fn query() {
         "#;
     assert_eq!(
         get(json, r#"frie\nds.#(ne\ts.#(ne\t=ig)).@ugly"#).data,
-        r#"{"first":"Dale","last":"Murphy","age":44,"nets":[{"net":"ig"},"fb","tw"]}"#
+        r#"{"first":"Dale","last":"Murphy","age":44,"nets":[{"net":"ig"},"fb","tw"]}"#.as_bytes()
     );
 }
 
@@ -175,7 +178,7 @@ fn multipath() {
     );
     assert_eq!(
         res.data,
-        r#"[[100,100],"モテモテ大作戦★男子編",[2278053589,2714868440,2714526565]]"#
+        r#"[[100,100],"モテモテ大作戦★男子編",[2278053589,2714868440,2714526565]]"#.as_bytes()
     );
     let res = get(
         &json,
@@ -183,7 +186,7 @@ fn multipath() {
     );
     assert_eq!(
         res.data,
-        r#"{"_":[100,100],"name":"モテモテ大作戦★男子編","@reverse":[2278053589,2714868440,2714526565]}"#
+        r#"{"_":[100,100],"name":"モテモテ大作戦★男子編","@reverse":[2278053589,2714868440,2714526565]}"#.as_bytes()
     );
     let res = get(
         &json,
@@ -191,7 +194,7 @@ fn multipath() {
     );
     assert_eq!(
         res.data,
-        r#"{"counts":[100,100],"name":"モテモテ大作戦★男子編","@reverse":[2278053589,2714868440,2714526565]}"#
+        r#"{"counts":[100,100],"name":"モテモテ大作戦★男子編","@reverse":[2278053589,2714868440,2714526565]}"#.as_bytes()
     );
 }
 
@@ -209,9 +212,12 @@ fn jsonlines() {
     assert_eq!(get(json, "..1.a").i32(), 2);
     assert_eq!(
         get(json, "..#.@this|@ugly").data,
-        r#"[{"a":1},{"a":2},true,false,4]"#
+        r#"[{"a":1},{"a":2},true,false,4]"#.as_bytes()
     );
-    assert_eq!(get(json, "..#.@this|@join|@ugly").data, r#"{"a":2}"#);
+    assert_eq!(
+        get(json, "..#.@this|@join|@ugly").data,
+        r#"{"a":2}"#.as_bytes()
+    );
 }
 
 #[test]
@@ -249,8 +255,8 @@ const EXAMPLE: &str = r#"
 #[cfg(test)]
 fn exec_simple_fuzz(data: &[u8]) {
     if let Ok(s) = std::str::from_utf8(data) {
-        let _ = std::str::from_utf8(get(s, s).data.as_bytes()).unwrap();
-        let _ = std::str::from_utf8(get(EXAMPLE, s).data.as_bytes()).unwrap();
+        let _ = std::str::from_utf8(&get(s, s).data).unwrap();
+        let _ = std::str::from_utf8(&get(EXAMPLE, s).data).unwrap();
     }
 }
 
@@ -341,6 +347,9 @@ fn bool_convert_query() {
 	}
     "#;
 
-    assert_eq!(get(JSON, r#"vals.#(b==~true)#.a"#).data, "[1,2,6,7,8]");
+    assert_eq!(
+        get(JSON, r#"vals.#(b==~true)#.a"#).data,
+        "[1,2,6,7,8]".as_bytes()
+    );
     // assert_eq!(get(JSON, r#"vals.#(b==~false)#.a"#).json(), "[3,4,5,9,10,11]");
 }

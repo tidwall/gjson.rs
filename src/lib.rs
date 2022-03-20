@@ -80,7 +80,7 @@ static KINDMAP: [Kind; 256] = {
 
 /// Value is the JSON value returned from the `get` function.
 pub struct Value<'a> {
-    data: Cow<'a, str>,
+    data: Cow<'a, [u8]>,
     uescstr: String,
     info: InfoBits,
     index: Option<usize>,
@@ -126,7 +126,7 @@ impl<'a> Ord for Value<'a> {
 impl<'a> Default for Value<'a> {
     fn default() -> Self {
         return Value {
-            data: Cow::Owned(String::default()),
+            data: Cow::Owned(Vec::new()),
             uescstr: String::default(),
             info: 0,
             index: None,
@@ -151,7 +151,7 @@ fn json_clone_from_ref<'a>(json: &'a Value<'a>) -> Value<'a> {
 
 fn json_from_slice<'a>(slice: &'a [u8], index: Option<usize>, info: InfoBits) -> Value<'a> {
     let mut json = Value {
-        data: Cow::Borrowed(tostr(slice)),
+        data: Cow::Borrowed(slice),
         uescstr: String::new(),
         info,
         index,
@@ -160,7 +160,7 @@ fn json_from_slice<'a>(slice: &'a [u8], index: Option<usize>, info: InfoBits) ->
     json
 }
 
-fn json_from_owned<'a>(owned: String, index: Option<usize>, info: InfoBits) -> Value<'a> {
+fn json_from_owned<'a>(owned: Vec<u8>, index: Option<usize>, info: InfoBits) -> Value<'a> {
     let mut json = Value {
         data: Cow::Owned(owned),
         uescstr: String::new(),
@@ -174,13 +174,13 @@ fn json_from_owned<'a>(owned: String, index: Option<usize>, info: InfoBits) -> V
 fn json_unescape_string<'a>(json: &mut Value<'a>) {
     if json.info & (INFO_STRING | INFO_ESC) == (INFO_STRING | INFO_ESC) {
         // Escaped string. We must unescape it into a new allocated string.
-        json.uescstr = unescape(&json.data.as_bytes());
+        json.uescstr = unescape(&json.data);
     }
 }
 
 impl<'a> Value<'a> {
     pub fn get(&'a self, path: &'a str) -> Value<'a> {
-        let mut json = get(&self.data, path);
+        let mut json = get_bytes(&self.data, path);
         let mut index = None;
         if let Some(index1) = self.index {
             if let Some(index2) = json.index {
@@ -200,7 +200,7 @@ impl<'a> Value<'a> {
     }
 
     pub fn f64(&'a self) -> f64 {
-        let raw = self.data.as_bytes();
+        let raw = &self.data;
         match self.kind() {
             Kind::True => 1.0,
             Kind::String => {
@@ -220,7 +220,7 @@ impl<'a> Value<'a> {
     }
 
     pub fn i64(&'a self) -> i64 {
-        let raw = self.data.as_bytes();
+        let raw = &self.data;
         match self.kind() {
             Kind::True => 1,
             Kind::String => {
@@ -236,7 +236,7 @@ impl<'a> Value<'a> {
     }
 
     pub fn u64(&'a self) -> u64 {
-        let raw = self.data.as_bytes();
+        let raw = &self.data;
         match self.kind() {
             Kind::True => 1,
             Kind::String => {
@@ -312,7 +312,7 @@ impl<'a> Value<'a> {
     }
 
     pub fn bool(&'a self) -> bool {
-        let raw = self.data.as_ref();
+        let raw = tostr(&self.data);
         match raw {
             r#"1"# | r#"true"# | r#""t""# | r#""1""# | r#""T""# | r#""true""# | r#""TRUE""#
             | r#""True""# => true,
@@ -326,12 +326,12 @@ impl<'a> Value<'a> {
         match self.kind() {
             Kind::True => "true",
             Kind::False => "false",
-            Kind::Object | Kind::Array | Kind::Number => &self.data,
+            Kind::Object | Kind::Array | Kind::Number => tostr(&self.data),
             Kind::String => {
                 if self.info & INFO_ESC == INFO_ESC {
                     self.uescstr.as_ref()
                 } else {
-                    let raw = self.data.as_bytes();
+                    let raw = &self.data;
                     tostr(&raw[1..raw.len() - 1])
                 }
             }
@@ -350,8 +350,7 @@ impl<'a> Value<'a> {
             iter(Value::default(), json_clone_from_ref(self));
             return;
         }
-        let json = self.data.as_bytes();
-        for_each(json, 0, false, kind, iter);
+        for_each(&self.data, 0, false, kind, iter);
     }
 
     pub fn array(&'a self) -> Vec<Value<'a>> {
@@ -746,7 +745,7 @@ fn get_arr_count<'a>(
         count += 1;
         true
     });
-    let res = json_from_owned(format!("{}", count), None, INFO_NUMBER);
+    let res = json_from_owned(Vec::from(format!("{}", count)), None, INFO_NUMBER);
     (res, i, path)
 }
 
@@ -799,10 +798,10 @@ fn query_matches<'a>(valin: &Value<'a>, op: &str, rpv: &str) -> bool {
         // convert to bool
         rpv = &rpv[1..];
         if value.bool() {
-            tvalue.data = Cow::Borrowed("true");
+            tvalue.data = Cow::Borrowed("true".as_bytes());
             tvalue.info = INFO_TRUE;
         } else {
-            tvalue.data = Cow::Borrowed("false");
+            tvalue.data = Cow::Borrowed("false".as_bytes());
             tvalue.info = INFO_FALSE;
         }
         value = &tvalue;
@@ -918,19 +917,14 @@ fn get_arr_children_with_query_subpath<'a>(
                 if index > 0 {
                     res.push(b',');
                 }
-                res.extend(value.data.as_bytes());
+                res.extend(value.data.as_ref());
                 index += 1;
             }
         }
         true
     });
     res.push(b']');
-    let res = json_from_owned(
-        // SAFETY: buffer was constructed from known utf8 parts.
-        unsafe { String::from_utf8_unchecked(res) },
-        None,
-        INFO_ARRAY,
-    );
+    let res = json_from_owned(res, None, INFO_ARRAY);
     (res, i, path)
 }
 
@@ -951,7 +945,7 @@ fn get_arr_children_with_subpath<'a>(
             if index > 0 {
                 res.push(b',');
             }
-            res.extend(value.data.as_bytes());
+            res.extend(value.data.as_ref());
             index += 1;
         }
         true
@@ -959,9 +953,7 @@ fn get_arr_children_with_subpath<'a>(
     res.push(b']');
     let res = json_from_owned(
         // SAFETY: buffer was constructed from known utf8 parts.
-        unsafe { String::from_utf8_unchecked(res) },
-        None,
-        INFO_ARRAY,
+        res, None, INFO_ARRAY,
     );
     (res, i, path)
 }
@@ -1005,6 +997,48 @@ fn get_arr_children_with_subpath<'a>(
 /// If you are consuming JSON from an unpredictable source then you may want to
 /// use the `valid` function first.
 pub fn get<'a>(json: &'a str, path: &'a str) -> Value<'a> {
+    get_bytes(json.as_bytes(), path)
+}
+
+/// Searches json for the specified path.
+/// A path is in dot syntax, such as "name.last" or "age".
+/// When the value is found it's returned immediately.
+///
+/// A path is a series of keys separated by a dot.
+/// A key may contain special wildcard characters '*' and '?'.
+/// To access an array value use the index as the key.
+/// To get the number of elements in an array or to access a child path, use
+/// the '#' character.
+/// The dot and wildcard character can be escaped with '\'.
+///
+/// ```json
+/// {
+///   "name": {"first": "Tom", "last": "Anderson"},
+///   "age":37,
+///   "children": ["Sara","Alex","Jack"],
+///   "friends": [
+///     {"first": "James", "last": "Murphy"},
+///     {"first": "Roger", "last": "Craig"}
+///   ]
+/// }
+/// ```
+///
+/// ```json
+///  "name.last"          >> "Anderson"
+///  "age"                >> 37
+///  "children"           >> ["Sara","Alex","Jack"]
+///  "children.#"         >> 3
+///  "children.1"         >> "Alex"
+///  "child*.2"           >> "Jack"
+///  "c?ildren.0"         >> "Sara"
+///  "friends.#.first"    >> ["James","Roger"]
+/// ```
+///
+/// This function expects that the json is valid, and does not validate.
+/// Invalid json will not panic, but it may return back unexpected results.
+/// If you are consuming JSON from an unpredictable source then you may want to
+/// use the `valid` function first.
+pub fn get_bytes<'a>(json: &'a [u8], path: &'a str) -> Value<'a> {
     let mut path = path;
     let mut lines = false;
     if path.len() >= 2 && path.as_bytes()[0] == b'.' && path.as_bytes()[1] == b'.' {
@@ -1014,7 +1048,6 @@ pub fn get<'a>(json: &'a str, path: &'a str) -> Value<'a> {
     }
     let path = Path::new(path);
     let (res, path) = {
-        let json = json.as_bytes();
         if lines {
             let res = get_arr(json, 0, true, path);
             (res.0, res.2)
@@ -1048,7 +1081,7 @@ pub fn get<'a>(json: &'a str, path: &'a str) -> Value<'a> {
         return res;
     }
     let path = tostr(path.extra);
-    let mut json = get(&res.data, path);
+    let mut json = get_bytes(&res.data, path);
     let mut index = None;
     if let Some(index1) = res.index {
         if let Some(index2) = json.index {
@@ -1075,7 +1108,16 @@ fn json_into_owned<'a>(json: Value) -> Value<'a> {
 /// If you are consuming JSON from an unpredictable source then you may want to
 /// use the `valid` function first.
 pub fn parse<'a>(json: &'a str) -> Value<'a> {
-    let json = json.as_bytes();
+    parse_bytes(json.as_bytes())
+}
+
+/// Parse the json and return it as a value.
+///
+/// This function expects that the json is valid, and does not validate.
+/// Invalid json will not panic, but it may return back unexpected results.
+/// If you are consuming JSON from an unpredictable source then you may want to
+/// use the `valid` function first.
+pub fn parse_bytes<'a>(json: &'a [u8]) -> Value<'a> {
     let mut i = 0;
     while i < json.len() {
         if json[i] <= b' ' {
