@@ -261,7 +261,7 @@ fn path_next_multipath<'a>(path: &Path<'a>) -> Path<'a> {
         comp: &path.extra[..e],
         esc: false,
         pat: false,
-        sep: sep,
+        sep,
         marg: 0,
         extra: &path.extra[s..],
     }

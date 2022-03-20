@@ -30,7 +30,7 @@ pub fn exec<'a>(json: &'a [u8], path: Path<'a>) -> (Value<'a>, Path<'a>) {
         "ugly" => mod_ugly(json, arg),
         "pretty" => mod_pretty(json, arg),
         "valid" => mod_valid(json, arg),
-        "flatten" => mod_flatten(&json, arg),
+        "flatten" => mod_flatten(json, arg),
         "join" => mod_join(json, arg),
         _ => Vec::new(),
     };
@@ -50,17 +50,22 @@ fn mod_valid(json: &[u8], _: &str) -> Vec<u8> {
 }
 
 fn mod_pretty(json: &[u8], arg: &str) -> Vec<u8> {
-    if !arg.is_empty() {
+    if arg.is_empty() {
+        pretty::pretty(json)
+    } else {
         let mut opts = pretty::PrettyOptions::new();
         let indent = super::get(arg, "indent");
         let prefix = super::get(arg, "prefix");
         let sort_keys = super::get(arg, "sortKeys");
         let width = super::get(arg, "width");
+        let indent_ref = indent.str();
+        let prefix_ref = prefix.str();
+
         if indent.exists() {
-            opts = opts.indent(indent.str());
+            opts = opts.indent(&indent_ref);
         }
         if prefix.exists() {
-            opts = opts.prefix(prefix.str());
+            opts = opts.prefix(&prefix_ref);
         }
         if sort_keys.exists() {
             opts = opts.sort_keys(sort_keys.bool());
@@ -69,8 +74,6 @@ fn mod_pretty(json: &[u8], arg: &str) -> Vec<u8> {
             opts = opts.width(width.u32() as usize);
         }
         opts.pretty(json)
-    } else {
-        pretty::pretty(json)
     }
 }
 
@@ -161,13 +164,13 @@ fn mod_join(json: &[u8], arg: &str) -> Vec<u8> {
             true
         });
 
-        for i in 0..keys.len() {
+        for (i, key) in keys.iter().enumerate() {
             if i > 0 {
                 out.push(b',');
             }
-            out.extend(&keys[i].0);
+            out.extend(&key.0);
             out.push(b':');
-            out.extend(kvals.get(&keys[i].1).unwrap());
+            out.extend(kvals.get(&key.1).unwrap());
         }
     }
     out.push(b'}');

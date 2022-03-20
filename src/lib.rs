@@ -81,7 +81,6 @@ static KINDMAP: [Kind; 256] = {
 /// Value is the JSON value returned from the `get` function.
 pub struct Value<'a> {
     data: Cow<'a, [u8]>,
-    uescstr: String,
     info: InfoBits,
     index: Option<usize>,
 }
@@ -106,7 +105,7 @@ impl<'a> Ord for Value<'a> {
         if cmp != Ordering::Equal {
             cmp
         } else if self.kind() == Kind::String {
-            self.str().cmp(other.str())
+            self.str().cmp(&other.str())
         } else if self.kind() == Kind::Number {
             let x = self.f64();
             let y = other.f64();
@@ -127,7 +126,6 @@ impl<'a> Default for Value<'a> {
     fn default() -> Self {
         return Value {
             data: Cow::Owned(Vec::new()),
-            uescstr: String::default(),
             info: 0,
             index: None,
         };
@@ -143,38 +141,24 @@ impl<'a> fmt::Display for Value<'a> {
 fn json_clone_from_ref<'a>(json: &'a Value<'a>) -> Value<'a> {
     Value {
         data: json.data.clone(),
-        uescstr: json.uescstr.clone(),
         info: json.info,
         index: json.index,
     }
 }
 
 fn json_from_slice<'a>(slice: &'a [u8], index: Option<usize>, info: InfoBits) -> Value<'a> {
-    let mut json = Value {
+    Value {
         data: Cow::Borrowed(slice),
-        uescstr: String::new(),
         info,
         index,
-    };
-    json_unescape_string(&mut json);
-    json
+    }
 }
 
 fn json_from_owned<'a>(owned: Vec<u8>, index: Option<usize>, info: InfoBits) -> Value<'a> {
-    let mut json = Value {
+    Value {
         data: Cow::Owned(owned),
-        uescstr: String::new(),
         info,
         index,
-    };
-    json_unescape_string(&mut json);
-    json
-}
-
-fn json_unescape_string<'a>(json: &mut Value<'a>) {
-    if json.info & (INFO_STRING | INFO_ESC) == (INFO_STRING | INFO_ESC) {
-        // Escaped string. We must unescape it into a new allocated string.
-        json.uescstr = unescape(&json.data);
     }
 }
 
@@ -322,22 +306,22 @@ impl<'a> Value<'a> {
         }
     }
 
-    pub fn str(&'a self) -> &'a str {
+    pub fn str(&'a self) -> Cow<'a, str> {
         match self.kind() {
-            Kind::True => "true",
-            Kind::False => "false",
-            Kind::Object | Kind::Array | Kind::Number => tostr(&self.data),
+            Kind::True => Cow::Borrowed("true"),
+            Kind::False => Cow::Borrowed("false"),
+            Kind::Object | Kind::Array | Kind::Number => Cow::Borrowed(tostr(&self.data)),
             Kind::String => {
+                let raw = &self.data;
                 if self.info & INFO_ESC == INFO_ESC {
-                    self.uescstr.as_ref()
+                    Cow::Owned(unescape(raw))
                 } else {
-                    let raw = &self.data;
-                    tostr(&raw[1..raw.len() - 1])
+                    Cow::Borrowed(tostr(&raw[1..raw.len() - 1]))
                 }
             }
             // Return an empty string for null. Use raw() to return the
             // raw json.
-            Kind::Null => "",
+            Kind::Null => Cow::Borrowed(""),
         }
     }
 
@@ -821,12 +805,12 @@ fn query_matches<'a>(valin: &Value<'a>, op: &str, rpv: &str) -> bool {
         Kind::String => match op {
             "=" => value.str() == rpv,
             "!=" => value.str() != rpv,
-            "<" => value.str() < rpv,
-            "<=" => value.str() <= rpv,
-            ">" => value.str() > rpv,
-            ">=" => value.str() >= rpv,
-            "%" => pmatch(rpv, value.str()),
-            "!%" => !pmatch(rpv, value.str()),
+            "<" => value.str().as_ref() < rpv,
+            "<=" => value.str().as_ref() <= rpv,
+            ">" => value.str().as_ref() > rpv,
+            ">=" => value.str().as_ref() >= rpv,
+            "%" => pmatch(rpv, value.str().as_ref()),
+            "!%" => !pmatch(rpv, value.str().as_ref()),
             _ => false,
         },
         Kind::Number => {
@@ -1095,7 +1079,6 @@ pub fn get_bytes<'a>(json: &'a [u8], path: &'a str) -> Value<'a> {
 fn json_into_owned<'a>(json: Value) -> Value<'a> {
     Value {
         data: Cow::Owned(json.data.into_owned()),
-        uescstr: json.uescstr,
         info: json.info,
         index: json.index,
     }

@@ -28,12 +28,12 @@ fn modifiers() {
     let res2 = get(&json, "statuses.#.user.id|@reverse|@valid");
     let mut all1 = Vec::new();
     res1.each(|_, value| {
-        all1.push(value.str().to_owned());
+        all1.push(value.str().into_owned());
         true
     });
     let mut all2 = Vec::new();
     res2.each(|_, value| {
-        all2.push(value.str().to_owned());
+        all2.push(value.str().into_owned());
         true
     });
     assert_eq!(all1.len(), 100);
@@ -46,12 +46,12 @@ fn modifiers() {
     let res2 = get(&json, "statuses.50.user|@reverse|@valid");
     let mut all1 = Vec::new();
     res1.each(|key, value| {
-        all1.push((key.str().to_owned(), value.str().to_owned()));
+        all1.push((key.str().into_owned(), value.str().into_owned()));
         true
     });
     let mut all2 = Vec::new();
     res2.each(|key, value| {
-        all2.push((key.str().to_owned(), value.str().to_owned()));
+        all2.push((key.str().into_owned(), value.str().into_owned()));
         true
     });
     assert_eq!(all1.len(), 40);
