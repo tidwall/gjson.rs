@@ -85,7 +85,7 @@ where
     let json = json.as_ref().as_bytes();
     let mut buf = Vec::with_capacity(json.len());
     let prefix = opts.inner.prefix.as_bytes();
-    if prefix.len() != 0 {
+    if !prefix.is_empty() {
         buf.extend(prefix);
     }
     extend_pretty_any(
@@ -102,7 +102,7 @@ where
         -1,
         0,
     );
-    if buf.len() > 0 {
+    if !buf.is_empty() {
         buf.push(b'\n');
     }
     unsafe { mem::transmute::<Vec<u8>, String>(buf) }
@@ -404,7 +404,7 @@ fn extend_pretty_object(
 }
 
 fn sort_pairs(json: &[u8], buf: &mut Vec<u8>, pairs: &mut Vec<Pair>) {
-    if pairs.len() == 0 {
+    if pairs.is_empty() {
         return;
     }
     let vstart = pairs[0].vstart;
@@ -433,7 +433,7 @@ fn sort_pairs(json: &[u8], buf: &mut Vec<u8>, pairs: &mut Vec<Pair>) {
 }
 
 fn extend_tabs(buf: &mut Vec<u8>, prefix: &[u8], indent: &[u8], tabs: i64) {
-    if prefix.len() != 0 {
+    if !prefix.is_empty() {
         buf.extend(prefix);
     }
     for _ in 0..tabs {

@@ -68,7 +68,7 @@ fn modifiers() {
     ]}"#,
         "user.@join.@ugly",
     );
-    assert_eq!(res.json(), r#"{"first":"tom","age":68,"last":"anderson"}"#);
+    assert_eq!(res.data, r#"{"first":"tom","age":68,"last":"anderson"}"#);
     let res = get(
         r#"{"user":[
         {"first":"tom","age":72},
@@ -77,16 +77,16 @@ fn modifiers() {
         r#"user.@join:{"preserve":true}.@ugly"#,
     );
     assert_eq!(
-        res.json(),
+        res.data,
         r#"{"first":"tom","age":72,"last":"anderson","age":68}"#
     );
 
     assert_eq!(
-        get("[1,[2],[3,4],[5,[6,7]]]", "@flatten").json(),
+        get("[1,[2],[3,4],[5,[6,7]]]", "@flatten").data,
         "[1,2,3,4,5,[6,7]]"
     );
     assert_eq!(
-        get("[1,[2],[3,4],[5,[6,7]]]", r#"@flatten:{"deep":true}"#).json(),
+        get("[1,[2],[3,4],[5,[6,7]]]", r#"@flatten:{"deep":true}"#).data,
         "[1,2,3,4,5,6,7]"
     );
 }
@@ -103,12 +103,12 @@ fn iterator() {
                 if index > 0 {
                     res.push_str(",");
                 }
-                res.push_str(value.get("user.name").json());
+                res.push_str(&value.get("user.name").data);
                 index += 1;
                 return true;
-            })
+            });
         }
-        return true;
+        true
     });
     res.push_str("]");
     assert_eq!(index, 100);
@@ -161,7 +161,7 @@ fn query() {
         }
         "#;
     assert_eq!(
-        get(json, r#"frie\nds.#(ne\ts.#(ne\t=ig)).@ugly"#).json(),
+        get(json, r#"frie\nds.#(ne\ts.#(ne\t=ig)).@ugly"#).data,
         r#"{"first":"Dale","last":"Murphy","age":44,"nets":[{"net":"ig"},"fb","tw"]}"#
     );
 }
@@ -174,7 +174,7 @@ fn multipath() {
         r#"[[statuses.#,statuses.#],statuses.10.user.name,[statuses.10.user.id,statuses.56.user.id,statuses.42.user.id].@reverse]"#,
     );
     assert_eq!(
-        res.json(),
+        res.data,
         r#"[[100,100],"モテモテ大作戦★男子編",[2278053589,2714868440,2714526565]]"#
     );
     let res = get(
@@ -182,7 +182,7 @@ fn multipath() {
         r#"{[statuses.#,statuses.#],statuses.10.user.name,[statuses.10.user.id,statuses.56.user.id,statuses.42.user.id].@reverse}"#,
     );
     assert_eq!(
-        res.json(),
+        res.data,
         r#"{"_":[100,100],"name":"モテモテ大作戦★男子編","@reverse":[2278053589,2714868440,2714526565]}"#
     );
     let res = get(
@@ -190,7 +190,7 @@ fn multipath() {
         r#"{counts:[statuses.#,statuses.#],statuses.10.user.name,[statuses.10.user.id,statuses.56.user.id,statuses.42.user.id].@reverse}"#,
     );
     assert_eq!(
-        res.json(),
+        res.data,
         r#"{"counts":[100,100],"name":"モテモテ大作戦★男子編","@reverse":[2278053589,2714868440,2714526565]}"#
     );
 }
@@ -208,10 +208,10 @@ fn jsonlines() {
     assert_eq!(get(json, "..0.a").i32(), 1);
     assert_eq!(get(json, "..1.a").i32(), 2);
     assert_eq!(
-        get(json, "..#.@this|@ugly").json(),
+        get(json, "..#.@this|@ugly").data,
         r#"[{"a":1},{"a":2},true,false,4]"#
     );
-    assert_eq!(get(json, "..#.@this|@join|@ugly").json(), r#"{"a":2}"#);
+    assert_eq!(get(json, "..#.@this|@join|@ugly").data, r#"{"a":2}"#);
 }
 
 #[test]
@@ -249,8 +249,8 @@ const EXAMPLE: &str = r#"
 #[cfg(test)]
 fn exec_simple_fuzz(data: &[u8]) {
     if let Ok(s) = std::str::from_utf8(data) {
-        let _ = std::str::from_utf8(get(s, s).json().as_bytes()).unwrap();
-        let _ = std::str::from_utf8(get(EXAMPLE, s).json().as_bytes()).unwrap();
+        let _ = std::str::from_utf8(get(s, s).data.as_bytes()).unwrap();
+        let _ = std::str::from_utf8(get(EXAMPLE, s).data.as_bytes()).unwrap();
     }
 }
 
@@ -321,7 +321,6 @@ fn escaped_query_string() {
     assert_eq!(get(JSON, r#"friends.#(last="Murphy").age"#).i32(), 47);
 }
 
-
 #[test]
 fn bool_convert_query() {
     const JSON: &str = r#"
@@ -342,6 +341,6 @@ fn bool_convert_query() {
 	}
     "#;
 
-    assert_eq!(get(JSON, r#"vals.#(b==~true)#.a"#).json(), "[1,2,6,7,8]");
+    assert_eq!(get(JSON, r#"vals.#(b==~true)#.a"#).data, "[1,2,6,7,8]");
     // assert_eq!(get(JSON, r#"vals.#(b==~false)#.a"#).json(), "[3,4,5,9,10,11]");
 }

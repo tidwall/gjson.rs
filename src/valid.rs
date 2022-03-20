@@ -263,12 +263,12 @@ fn valid_number(json: &[u8], mut i: usize) -> (bool, usize) {
     // sign
     if json[i] == b'-' {
         i += 1;
-		if i == json.len() {
-			return (false,i);
-		}
-		if json[i] < b'0' || json[i] > b'9' {
-			return (false, i);
-		}
+        if i == json.len() {
+            return (false, i);
+        }
+        if json[i] < b'0' || json[i] > b'9' {
+            return (false, i);
+        }
     }
     // int
     if i == json.len() {
@@ -333,7 +333,7 @@ fn valid_number(json: &[u8], mut i: usize) -> (bool, usize) {
             break;
         }
     }
-    return (true, i);
+    (true, i)
 }
 
 fn valid_true(json: &[u8], i: usize) -> (bool, usize) {

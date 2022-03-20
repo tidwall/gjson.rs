@@ -53,7 +53,7 @@ fn mod_valid(json: &str, _: &str) -> String {
 }
 
 fn mod_pretty(json: &str, arg: &str) -> String {
-    if arg.len() > 0 {
+    if !arg.is_empty() {
         let mut opts = pretty::PrettyOptions::new();
         let indent = super::get(arg, "indent");
         let prefix = super::get(arg, "prefix");
@@ -83,7 +83,7 @@ fn mod_ugly(json: &str, _: &str) -> String {
 
 fn mod_reverse(json: &str, _: &str) -> String {
     let res = parse(json);
-    let json = res.slice.as_bytes();
+    let json = res.data.as_bytes();
     let mut slices = Vec::new();
     let endcaps;
     let mut cap = 2;
@@ -93,20 +93,20 @@ fn mod_reverse(json: &str, _: &str) -> String {
             res.each(|key, value| {
                 let kindex = key.index.unwrap();
                 let vindex = value.index.unwrap();
-                let slice = &json[kindex..vindex + value.slice.len()];
+                let slice = &json[kindex..vindex + value.data.len()];
                 slices.push(slice);
                 cap += 1 + slice.len();
-                return true;
+                true
             });
         }
         Kind::Array => {
             endcaps = (b'[', b']');
             res.each(|_, value| {
                 let vindex = value.index.unwrap();
-                let slice = &json[vindex..vindex + value.slice.len()];
+                let slice = &json[vindex..vindex + value.data.len()];
                 slices.push(slice);
                 cap += 1 + slice.len();
-                return true;
+                true
             });
         }
         _ => return tostr(json).to_owned(),
@@ -130,8 +130,7 @@ fn mod_join(json: &str, arg: &str) -> String {
         return json.to_owned();
     }
     let preserve = get(arg, "preserve").bool();
-    let mut out = Vec::new();
-    out.push(b'{');
+    let mut out = vec![b'{'];
     if preserve {
         // Preserve duplicate keys.
         let mut idx = 0;
@@ -142,10 +141,10 @@ fn mod_join(json: &str, arg: &str) -> String {
             if idx > 0 {
                 out.push(b',');
             }
-            out.extend(unwrap(value.slice.as_bytes()));
+            out.extend(unwrap(value.data.as_bytes()));
             idx += 1;
-            return true;
-        })
+            true
+        });
     } else {
         // Deduplicate keys and generate an object with stable ordering.
         let mut keys = Vec::new();
@@ -157,13 +156,13 @@ fn mod_join(json: &str, arg: &str) -> String {
             value.each(|key, value| {
                 let k = key.str().as_bytes().to_owned();
                 if !kvals.contains_key(&k) {
-                    let key = key.json().as_bytes().to_owned();
+                    let key = key.data.as_bytes().to_owned();
                     keys.push((key, k.clone()));
                 }
-                kvals.insert(k, value.json().as_bytes().to_owned());
-                return true;
+                kvals.insert(k, value.data.as_bytes().to_owned());
+                true
             });
-            return true;
+            true
         });
 
         for i in 0..keys.len() {
@@ -191,28 +190,27 @@ fn mod_flatten(json: &str, arg: &str) -> String {
         return json.to_owned();
     }
     let deep = get(arg, "deep").bool();
-    let mut out = Vec::new();
-    out.push(b'[');
+    let mut out = vec![b'['];
     let mut idx = 0;
     res.each(|_, value| {
         let raw;
         if value.kind() == Kind::Array {
             if deep {
-                raw = unwrap(mod_flatten(value.json(), arg).as_bytes()).to_owned();
+                raw = unwrap(mod_flatten(&value.data, arg).as_bytes()).to_owned();
             } else {
-                raw = unwrap(value.json().as_bytes()).to_owned();
+                raw = unwrap(value.data.as_bytes()).to_owned();
             }
         } else {
-            raw = value.slice.as_bytes().to_owned();
+            raw = value.data.as_bytes().to_owned();
         }
-        if raw.len() > 0 {
+        if !raw.is_empty() {
             if idx > 0 {
                 out.push(b',');
             }
             out.extend(&raw);
             idx += 1;
         }
-        return true;
+        true
     });
     out.push(b']');
     // SAFETY: buffer was constructed from known utf8 parts.
@@ -220,10 +218,10 @@ fn mod_flatten(json: &str, arg: &str) -> String {
 }
 
 fn unwrap<'a>(mut json: &'a [u8]) -> &'a [u8] {
-    while json.len() > 0 && json[0] <= b' ' {
+    while !json.is_empty() && json[0] <= b' ' {
         json = &json[1..];
     }
-    while json.len() > 0 && json[json.len() - 1] <= b' ' {
+    while !json.is_empty() && json[json.len() - 1] <= b' ' {
         json = &json[..json.len() - 1];
     }
     if json.len() >= 2 && (json[0] == b'[' || json[0] == b'{') {

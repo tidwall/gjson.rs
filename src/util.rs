@@ -31,8 +31,7 @@ pub fn trim<'a>(mut bin: &'a [u8]) -> &'a [u8] {
 }
 
 // unescape a json string.
-pub fn unescape(json: &str) -> String {
-    let json = json.as_bytes();
+pub fn unescape(json: &[u8]) -> String {
     if json.len() < 2 || json[0] != b'"' || json[json.len() - 1] != b'"' {
         return String::new();
     }
@@ -125,10 +124,11 @@ fn utf16_decode(r1: u32, r2: u32) -> u32 {
 
 pub fn extend_json_string(out: &mut Vec<u8>, s: &[u8]) {
     out.push(b'"');
-    for i in 0..s.len() {
-        if s[i] < b' ' || s[i] == b'\n' || s[i] == b'\\' || s[i] == b'"' {
+    for i in s {
+        let i = *i;
+        if i < b' ' || i == b'\n' || i == b'\\' || i == b'"' {
             out.push(b'\\');
-            match s[i] {
+            match i {
                 b'"' => out.push(b'"'),
                 b'\\' => out.push(b'\\'),
                 8 => out.push(b'b'),
@@ -140,14 +140,14 @@ pub fn extend_json_string(out: &mut Vec<u8>, s: &[u8]) {
                     out.push(b'u');
                     out.push(b'0');
                     out.push(b'0');
-                    let h = s[i] >> 4;
+                    let h = i >> 4;
                     out.push(if h < 10 { h + b'0' } else { (h - 10) + b'A' });
-                    let l = s[i] & 0xF;
+                    let l = i & 0xF;
                     out.push(if l < 10 { l + b'0' } else { (l - 10) + b'A' });
                 }
             }
         } else {
-            out.push(s[i]);
+            out.push(i);
         }
     }
     out.push(b'"');
@@ -178,7 +178,7 @@ where
 {
     let mut string = string.as_ref();
     let mut pattern = pattern.as_ref();
-    while pattern.len() > 0 {
+    while !pattern.is_empty() {
         if pattern[0] == b'\\' {
             if pattern.len() == 1 {
                 return false;
@@ -195,13 +195,13 @@ where
             if pmatch(&pattern[1..], string) {
                 return true;
             }
-            if string.len() == 0 {
+            if string.is_empty() {
                 return false;
             }
             string = &string[1..];
             continue;
         }
-        if string.len() == 0 {
+        if string.is_empty() {
             return false;
         }
         if pattern[0] != b'?' && string[0] != pattern[0] {
@@ -210,7 +210,7 @@ where
         pattern = &pattern[1..];
         string = &string[1..];
     }
-    return string.len() == 0 && pattern.len() == 0;
+    string.is_empty() && pattern.is_empty()
 }
 
 #[cfg(test)]
@@ -257,7 +257,7 @@ LINE交換できる？:あぁ……ごめん✋
         let raw2 = r#""\n\u7B2C\u4E00\u5370\u8C61:\u306A\u3093\u304B\u6016\u3063\uFF01\n\u4ECA\u306E\u5370\u8C61:\u3068\u308A\u3042\u3048\u305A\u30AD\u30E2\u3044\u3002\u565B\u307F\u5408\u308F\u306A\u3044\n\u597D\u304D\u306A\u3068\u3053\u308D:\u3076\u3059\u3067\u30AD\u30E2\u3044\u3068\u3053\uD83D\uDE0B\u2728\u2728\n\u601D\u3044\u51FA:\u3093\u30FC\u30FC\u30FC\u3001\u3042\u308A\u3059\u304E\uD83D\uDE0A\u2764\uFE0F\nLINE\u4EA4\u63DB\u3067\u304D\u308B\uFF1F:\u3042\u3041\u2026\u2026\u3054\u3081\u3093\u270B\n\u30C8\u30D7\u753B\u3092\u307F\u3066:\u7167\u308C\u307E\u3059\u304C\u306A\uD83D\uDE18\u2728\n\u4E00\u8A00:\u304A\u524D\u306F\u4E00\u751F\u3082\u3093\u306E\u30C0\u30C1\uD83D\uDC96""#;
         assert_eq!(text, super::unescape(raw1));
         assert_eq!(text, super::unescape(raw2));
-        assert_eq!(super::escape(&text), raw1);
+        assert_eq!(super::escape(text), raw1);
 
         assert_eq!(
             super::escape("ad\"\\/\u{08}\u{0C}\n\r\t\u{00}sf"),
