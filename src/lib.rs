@@ -806,18 +806,18 @@ fn query_matches<'a>(valin: &Value<'a>, op: &str, rpv: &str) -> bool {
     }
     let mut value = valin;
     let mut tvalue = Value::default();
-	if rpv.len() > 0 && rpv[0] == b'~' {
-		// convert to bool
-		rpv = &rpv[1..];
-		if value.bool() {
+    if rpv.len() > 0 && rpv[0] == b'~' {
+        // convert to bool
+        rpv = &rpv[1..];
+        if value.bool() {
             tvalue.slice = "true";
             tvalue.info = INFO_TRUE;
-		} else {
+        } else {
             tvalue.slice = "false";
-			tvalue.info = INFO_FALSE;
-		}
+            tvalue.info = INFO_FALSE;
+        }
         value = &tvalue;
-	}
+    }
     let rpv = tostr(rpv);
     if !value.exists() {
         return false;
@@ -989,7 +989,7 @@ fn get_arr_children_with_subpath<'a>(
 /// To get the number of elements in an array or to access a child path, use
 /// the '#' character.
 /// The dot and wildcard character can be escaped with '\'.
-/// 
+///
 /// ```json
 /// {
 ///   "name": {"first": "Tom", "last": "Anderson"},
@@ -1001,7 +1001,7 @@ fn get_arr_children_with_subpath<'a>(
 ///   ]
 /// }
 /// ```
-/// 
+///
 /// ```json
 ///  "name.last"          >> "Anderson"
 ///  "age"                >> 37
@@ -1012,12 +1012,55 @@ fn get_arr_children_with_subpath<'a>(
 ///  "c?ildren.0"         >> "Sara"
 ///  "friends.#.first"    >> ["James","Roger"]
 /// ```
-/// 
+///
 /// This function expects that the json is valid, and does not validate.
 /// Invalid json will not panic, but it may return back unexpected results.
 /// If you are consuming JSON from an unpredictable source then you may want to
 /// use the `valid` function first.
+#[inline]
 pub fn get<'a>(json: &'a str, path: &'a str) -> Value<'a> {
+    get_bytes(json.as_bytes(), path)
+}
+
+/// Searches json for the specified path.
+/// A path is in dot syntax, such as "name.last" or "age".
+/// When the value is found it's returned immediately.
+///
+/// A path is a series of keys separated by a dot.
+/// A key may contain special wildcard characters '*' and '?'.
+/// To access an array value use the index as the key.
+/// To get the number of elements in an array or to access a child path, use
+/// the '#' character.
+/// The dot and wildcard character can be escaped with '\'.
+///
+/// ```json
+/// {
+///   "name": {"first": "Tom", "last": "Anderson"},
+///   "age":37,
+///   "children": ["Sara","Alex","Jack"],
+///   "friends": [
+///     {"first": "James", "last": "Murphy"},
+///     {"first": "Roger", "last": "Craig"}
+///   ]
+/// }
+/// ```
+///
+/// ```json
+///  "name.last"          >> "Anderson"
+///  "age"                >> 37
+///  "children"           >> ["Sara","Alex","Jack"]
+///  "children.#"         >> 3
+///  "children.1"         >> "Alex"
+///  "child*.2"           >> "Jack"
+///  "c?ildren.0"         >> "Sara"
+///  "friends.#.first"    >> ["James","Roger"]
+/// ```
+///
+/// This function expects that the json is valid, and does not validate.
+/// Invalid json will not panic, but it may return back unexpected results.
+/// If you are consuming JSON from an unpredictable source then you may want to
+/// use the `valid` function first.
+pub fn get_bytes<'a>(json: &'a [u8], path: &'a str) -> Value<'a> {
     let mut path = path;
     let mut lines = false;
     if path.len() >= 2 && path.as_bytes()[0] == b'.' && path.as_bytes()[1] == b'.' {
@@ -1027,7 +1070,6 @@ pub fn get<'a>(json: &'a str, path: &'a str) -> Value<'a> {
     }
     let path = Path::new(path);
     let (res, path) = {
-        let json = json.as_bytes();
         if lines {
             let res = get_arr(json, 0, true, path);
             (res.0, res.2)
