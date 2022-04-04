@@ -1019,7 +1019,7 @@ fn get_arr_children_with_subpath<'a>(
 /// use the `valid` function first.
 #[inline]
 pub fn get<'a>(json: &'a str, path: &'a str) -> Value<'a> {
-    get_bytes(json.as_bytes(), path)
+    unsafe { get_bytes(json.as_bytes(), path) }
 }
 
 /// Searches json for the specified path.
@@ -1060,7 +1060,7 @@ pub fn get<'a>(json: &'a str, path: &'a str) -> Value<'a> {
 /// Invalid json will not panic, but it may return back unexpected results.
 /// If you are consuming JSON from an unpredictable source then you may want to
 /// use the `valid` function first.
-pub fn get_bytes<'a>(json: &'a [u8], path: &'a str) -> Value<'a> {
+pub unsafe fn get_bytes<'a>(json: &'a [u8], path: &'a str) -> Value<'a> {
     let mut path = path;
     let mut lines = false;
     if path.len() >= 2 && path.as_bytes()[0] == b'.' && path.as_bytes()[1] == b'.' {
