@@ -980,6 +980,7 @@ fn get_arr_children_with_subpath<'a>(
 /// Invalid json will not panic, but it may return back unexpected results.
 /// If you are consuming JSON from an unpredictable source then you may want to
 /// use the `valid` function first.
+#[inline]
 pub fn get<'a>(json: &'a str, path: &'a str) -> Value<'a> {
     unsafe { get_bytes(json.as_bytes(), path) }
 }
