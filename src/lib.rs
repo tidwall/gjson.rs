@@ -164,7 +164,7 @@ fn json_from_owned<'a>(owned: Vec<u8>, index: Option<usize>, info: InfoBits) -> 
 
 impl<'a> Value<'a> {
     pub fn get(&'a self, path: &'a str) -> Value<'a> {
-        let mut json = get_bytes(&self.data, path);
+        let mut json = unsafe { get_bytes(&self.data, path) };
         let mut index = None;
         if let Some(index1) = self.index {
             if let Some(index2) = json.index {
@@ -981,7 +981,7 @@ fn get_arr_children_with_subpath<'a>(
 /// If you are consuming JSON from an unpredictable source then you may want to
 /// use the `valid` function first.
 pub fn get<'a>(json: &'a str, path: &'a str) -> Value<'a> {
-    get_bytes(json.as_bytes(), path)
+    unsafe { get_bytes(json.as_bytes(), path) }
 }
 
 /// Searches json for the specified path.
@@ -1022,7 +1022,7 @@ pub fn get<'a>(json: &'a str, path: &'a str) -> Value<'a> {
 /// Invalid json will not panic, but it may return back unexpected results.
 /// If you are consuming JSON from an unpredictable source then you may want to
 /// use the `valid` function first.
-pub fn get_bytes<'a>(json: &'a [u8], path: &'a str) -> Value<'a> {
+pub unsafe fn get_bytes<'a>(json: &'a [u8], path: &'a str) -> Value<'a> {
     let mut path = path;
     let mut lines = false;
     if path.len() >= 2 && path.as_bytes()[0] == b'.' && path.as_bytes()[1] == b'.' {
