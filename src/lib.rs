@@ -1019,48 +1019,6 @@ fn get_arr_children_with_subpath<'a>(
 /// use the `valid` function first.
 #[inline]
 pub fn get<'a>(json: &'a str, path: &'a str) -> Value<'a> {
-    unsafe { get_bytes(json.as_bytes(), path) }
-}
-
-/// Searches json for the specified path.
-/// A path is in dot syntax, such as "name.last" or "age".
-/// When the value is found it's returned immediately.
-///
-/// A path is a series of keys separated by a dot.
-/// A key may contain special wildcard characters '*' and '?'.
-/// To access an array value use the index as the key.
-/// To get the number of elements in an array or to access a child path, use
-/// the '#' character.
-/// The dot and wildcard character can be escaped with '\'.
-///
-/// ```json
-/// {
-///   "name": {"first": "Tom", "last": "Anderson"},
-///   "age":37,
-///   "children": ["Sara","Alex","Jack"],
-///   "friends": [
-///     {"first": "James", "last": "Murphy"},
-///     {"first": "Roger", "last": "Craig"}
-///   ]
-/// }
-/// ```
-///
-/// ```json
-///  "name.last"          >> "Anderson"
-///  "age"                >> 37
-///  "children"           >> ["Sara","Alex","Jack"]
-///  "children.#"         >> 3
-///  "children.1"         >> "Alex"
-///  "child*.2"           >> "Jack"
-///  "c?ildren.0"         >> "Sara"
-///  "friends.#.first"    >> ["James","Roger"]
-/// ```
-///
-/// This function expects that the json is valid, and does not validate.
-/// Invalid json will not panic, but it may return back unexpected results.
-/// If you are consuming JSON from an unpredictable source then you may want to
-/// use the `valid` function first.
-pub unsafe fn get_bytes<'a>(json: &'a [u8], path: &'a str) -> Value<'a> {
     let mut path = path;
     let mut lines = false;
     if path.len() >= 2 && path.as_bytes()[0] == b'.' && path.as_bytes()[1] == b'.' {
@@ -1070,6 +1028,7 @@ pub unsafe fn get_bytes<'a>(json: &'a [u8], path: &'a str) -> Value<'a> {
     }
     let path = Path::new(path);
     let (res, path) = {
+        let json = json.as_bytes();
         if lines {
             let res = get_arr(json, 0, true, path);
             (res.0, res.2)
@@ -1116,6 +1075,20 @@ pub unsafe fn get_bytes<'a>(json: &'a [u8], path: &'a str) -> Value<'a> {
     }
     json.index = index;
     json
+}
+
+/// Searches json for the specified path.
+/// Works the same as `get` except that the input json is a a byte slice
+/// instead of a string.
+/// 
+/// # Safety
+///
+/// This function is unsafe because it does not check that the bytes passed to
+/// it are valid UTF-8. If this constraint is violated, undefined behavior
+/// results, as the rest of Rust assumes that [`&str`]s in Value<'a> are
+/// valid UTF-8.
+pub unsafe fn get_bytes<'a>(json: &'a [u8], path: &'a str) -> Value<'a> {
+    return get(tostr(json), path)
 }
 
 fn json_into_owned<'a>(json: Value) -> Value<'a> {
