@@ -20,7 +20,7 @@ pub struct Path<'a> {
 
 impl<'a> Path<'a> {
     pub fn more(&self) -> bool {
-        return self.sep != 0;
+        self.sep != 0
     }
     pub fn new(path: &'a str) -> Self {
         let path = Path {
@@ -34,10 +34,10 @@ impl<'a> Path<'a> {
         path_next(&path)
     }
     pub fn is_modifier(&self) -> bool {
-        self.comp.len() > 0 && self.comp[0] == b'@'
+        !self.comp.is_empty() && self.comp[0] == b'@'
     }
     pub fn is_multipath(&self) -> bool {
-        self.comp.len() > 0 && (self.comp[0] == b'{' || self.comp[0] == b'[')
+        !self.comp.is_empty() && (self.comp[0] == b'{' || self.comp[0] == b'[')
     }
     // next returns the next component
     pub fn next(&self) -> Path<'a> {
@@ -69,7 +69,7 @@ impl<'a> Path<'a> {
         }
         let group = tostr(&self.extra[..len]);
         remaining.comp = "".as_bytes();
-        return (group, remaining);
+        (group, remaining)
     }
 
     // -> lh, op, rh
@@ -83,10 +83,10 @@ impl<'a> Path<'a> {
             if query.len() < 2 || query[0] != b'#' || query[1] != b'(' {
                 break 'bad;
             } else if query[query.len() - 1] == b'#' {
-                if query[query.len() - 2] != b')' {
-                    break 'bad;
-                } else {
+                if query[query.len() - 2] == b')' {
                     query = &query[2..query.len() - 2];
+                } else {
+                    break 'bad;
                 }
             } else if query[query.len() - 1] != b')' {
                 break 'bad;
@@ -229,9 +229,9 @@ fn path_next_query<'a>(path: &Path<'a>) -> Path<'a> {
         comp: &path.extra[..i],
         esc: false,
         pat: false,
-        sep: sep,
+        sep,
         marg: 0,
-        extra: extra,
+        extra,
     };
     if path.comp[path.comp.len() - 1] == b'#' {
         if path.comp[path.comp.len() - 2] != b')' {
@@ -261,7 +261,7 @@ fn path_next_multipath<'a>(path: &Path<'a>) -> Path<'a> {
         comp: &path.extra[..e],
         esc: false,
         pat: false,
-        sep: sep,
+        sep,
         marg: 0,
         extra: &path.extra[s..],
     }
@@ -275,7 +275,7 @@ fn path_next<'a>(path: &Path<'a>) -> Path<'a> {
     let mut pat = false;
     let mut modi = false;
     let mut marg = 0;
-    if path.extra.len() > 0 {
+    if !path.extra.is_empty() {
         if path.extra[0] == b'@' {
             modi = true;
         } else if path.extra[0] == b'#' {
@@ -321,7 +321,7 @@ fn path_next<'a>(path: &Path<'a>) -> Path<'a> {
             }
             break;
         } else if path.extra[i] == b'*' || path.extra[i] == b'?' {
-            pat = true
+            pat = true;
         } else if path.extra[i] == b'.' || path.extra[i] == b'|' {
             sep = path.extra[i];
             i += 1;
@@ -335,10 +335,10 @@ fn path_next<'a>(path: &Path<'a>) -> Path<'a> {
         } else {
             &path.extra[..i - 1]
         },
-        esc: esc,
-        pat: pat,
-        sep: sep,
-        marg: marg,
+        esc,
+        pat,
+        sep,
+        marg,
         extra: &path.extra[i..],
     }
 }

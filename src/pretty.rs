@@ -6,7 +6,6 @@
 // provides additional information about the data
 
 use std::cmp::Ordering;
-use std::mem;
 
 // maxDepth is maximum number of nested objects and arrays
 const MAX_DEPTH: usize = 500;
@@ -63,29 +62,19 @@ impl<'a> PrettyOptions<'a> {
         self.inner.sort_keys = sort_keys;
         self
     }
-    pub fn pretty<J>(&self, json: J) -> String
-    where
-        J: AsRef<str>,
-    {
+    pub fn pretty(&self, json: &[u8]) -> Vec<u8> {
         pretty_options(json, self)
     }
 }
 
-pub fn pretty<J>(json: J) -> String
-where
-    J: AsRef<str>,
-{
+pub fn pretty(json: &[u8]) -> Vec<u8> {
     PrettyOptions::default().pretty(json)
 }
 
-fn pretty_options<J>(json: J, opts: &PrettyOptions) -> String
-where
-    J: AsRef<str>,
-{
-    let json = json.as_ref().as_bytes();
+fn pretty_options(json: &[u8], opts: &PrettyOptions) -> Vec<u8> {
     let mut buf = Vec::with_capacity(json.len());
     let prefix = opts.inner.prefix.as_bytes();
-    if prefix.len() != 0 {
+    if !prefix.is_empty() {
         buf.extend(prefix);
     }
     extend_pretty_any(
@@ -102,10 +91,10 @@ where
         -1,
         0,
     );
-    if buf.len() > 0 {
+    if !buf.is_empty() {
         buf.push(b'\n');
     }
-    unsafe { mem::transmute::<Vec<u8>, String>(buf) }
+    buf
 }
 
 fn extend_pretty_any(
@@ -270,8 +259,8 @@ fn extend_pretty_object(
     depth: usize,
 ) -> (usize, i64, bool) {
     if depth == MAX_DEPTH {
-        let fragment = ugly(unsafe { std::str::from_utf8_unchecked(&json[i..]) });
-        buf.extend(fragment.as_bytes());
+        let fragment = ugly_bytes(&json[i..]);
+        buf.extend(fragment);
         return (json.len(), nl, true);
     }
     let mut ok;
@@ -404,7 +393,7 @@ fn extend_pretty_object(
 }
 
 fn sort_pairs(json: &[u8], buf: &mut Vec<u8>, pairs: &mut Vec<Pair>) {
-    if pairs.len() == 0 {
+    if pairs.is_empty() {
         return;
     }
     let vstart = pairs[0].vstart;
@@ -433,7 +422,7 @@ fn sort_pairs(json: &[u8], buf: &mut Vec<u8>, pairs: &mut Vec<Pair>) {
 }
 
 fn extend_tabs(buf: &mut Vec<u8>, prefix: &[u8], indent: &[u8], tabs: i64) {
-    if prefix.len() != 0 {
+    if !prefix.is_empty() {
         buf.extend(prefix);
     }
     for _ in 0..tabs {
@@ -441,9 +430,8 @@ fn extend_tabs(buf: &mut Vec<u8>, prefix: &[u8], indent: &[u8], tabs: i64) {
     }
 }
 
-pub fn ugly(json: &str) -> String {
-    let src = json.as_bytes();
-    let mut dst = Vec::with_capacity(json.len());
+pub fn ugly_bytes(src: &[u8]) -> Vec<u8> {
+    let mut dst = Vec::with_capacity(src.len());
     let mut i = 0;
     while i < src.len() {
         if src[i] > b' ' {
@@ -470,7 +458,11 @@ pub fn ugly(json: &str) -> String {
         }
         i += 1;
     }
-    unsafe { mem::transmute::<Vec<u8>, String>(dst) }
+    dst
+}
+
+pub fn ugly(json: &str) -> Vec<u8> {
+    ugly_bytes(json.as_bytes())
 }
 
 #[cfg(test)]
@@ -507,18 +499,24 @@ mod test {
 
     #[test]
     fn ugly() {
-        assert_eq!(super::ugly(EXAMPLE_PRETTY), EXAMPLE_UGLY);
-        assert_eq!(super::pretty(super::ugly(EXAMPLE_PRETTY)), EXAMPLE_PRETTY);
+        assert_eq!(super::ugly(EXAMPLE_PRETTY), EXAMPLE_UGLY.as_bytes());
+        assert_eq!(
+            super::pretty(&super::ugly(EXAMPLE_PRETTY)),
+            EXAMPLE_PRETTY.as_bytes()
+        );
     }
     #[test]
     fn pretty() {
-        assert_eq!(super::pretty(EXAMPLE_UGLY), EXAMPLE_PRETTY);
+        assert_eq!(
+            super::pretty(EXAMPLE_UGLY.as_bytes()),
+            EXAMPLE_PRETTY.as_bytes()
+        );
         let res = super::PrettyOptions::new()
             .prefix("\t")
             .width(10)
             .sort_keys(true)
             .indent("   ")
-            .pretty(EXAMPLE_UGLY);
+            .pretty(EXAMPLE_UGLY.as_bytes());
         let expect = r#"	{
 	   "children": [
 	      "Andy",
@@ -556,23 +554,23 @@ mod test {
 	   "values3": []
 	}
 "#;
-        assert_eq!(res, expect);
+        assert_eq!(res, expect.as_bytes());
     }
 
     #[test]
     fn xcover() {
-        let res = super::ugly(
+        let res = super::ugly_bytes(
             &super::PrettyOptions::new()
                 .sort_keys(true)
-                .pretty(r#"{"hello":"JELLO","hello":"HELLO"}"#),
+                .pretty(r#"{"hello":"JELLO","hello":"HELLO"}"#.as_bytes()),
         );
-        assert_eq!(res, r#"{"hello":"JELLO","hello":"HELLO"}"#);
+        assert_eq!(res, r#"{"hello":"JELLO","hello":"HELLO"}"#.as_bytes());
         super::PrettyOptions::new()
             .sort_keys(true)
-            .pretty(r#"{"hello":"JELLO","hello":"HELLO"}"#);
+            .pretty(r#"{"hello":"JELLO","hello":"HELLO"}"#.as_bytes());
 
-        super::pretty(r#"{"#);
-        super::pretty(r#"r"#);
+        super::pretty(r#"{"#.as_bytes());
+        super::pretty(r#"r"#.as_bytes());
     }
 
     #[test]
@@ -653,6 +651,9 @@ mod test {
       ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]      
       "#;
 
-        println!("{}", super::pretty(JSON));
+        println!(
+            "{}",
+            String::from_utf8_lossy(&super::pretty(JSON.as_bytes()))
+        );
     }
 }

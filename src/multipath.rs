@@ -14,10 +14,8 @@ fn name_of_last<'a>(path: &'a [u8]) -> &'a [u8] {
     for i in 0..path.len() {
         let i = path.len() - 1 - i;
         if path[i] == b'|' || path[i] == b'.' {
-            if i > 0 {
-                if path[i - 1] == b'\\' {
-                    continue;
-                }
+            if i > 0 && path[i - 1] == b'\\' {
+                continue;
             }
             return &path[i + 1..];
         }
@@ -28,11 +26,12 @@ fn name_of_last<'a>(path: &'a [u8]) -> &'a [u8] {
 // is_simple_name returns true if the component name is simple enough to use as
 // a multipath key.
 fn is_simple_name(comp: &[u8]) -> bool {
-    for i in 0..comp.len() {
-        if comp[i] < b' ' {
+    for i in comp {
+        let i = *i;
+        if i < b' ' {
             return false;
         }
-        match comp[i] {
+        match i {
             b'[' | b']' | b'{' | b'}' | b'(' | b')' | b'#' | b'|' => {
                 return false;
             }
@@ -108,8 +107,7 @@ fn exec_arr<'a>(json: &'a [u8], path: Path<'a>) -> (Value<'a>, Path<'a>) {
     if path.comp[0] == b'[' && path.comp[path.comp.len() - 1] != b']' {
         return (Value::default(), Path::default());
     }
-    let mut out = Vec::new();
-    out.push(b'[');
+    let mut out = vec![b'['];
     let mut index = 0;
     each_comp(path.comp, |_, path| {
         let res = get(tostr(json), tostr(path));
@@ -117,21 +115,19 @@ fn exec_arr<'a>(json: &'a [u8], path: Path<'a>) -> (Value<'a>, Path<'a>) {
             if index > 0 {
                 out.push(b',');
             }
-            out.extend(res.json().as_bytes());
+            out.extend(res.data.as_ref());
             index += 1;
         }
     });
     out.push(b']');
-    let json = unsafe { String::from_utf8_unchecked(out) };
-    (json_from_owned(json, None, INFO_ARRAY), path)
+    (json_from_owned(out, None, INFO_ARRAY), path)
 }
 
 fn exec_obj<'a>(json: &'a [u8], path: Path<'a>) -> (Value<'a>, Path<'a>) {
     if path.comp[0] == b'{' && path.comp[path.comp.len() - 1] != b'}' {
         return (Value::default(), Path::default());
     }
-    let mut out = Vec::new();
-    out.push(b'{');
+    let mut out = vec![b'{'];
     let mut index = 0;
     each_comp(path.comp, |key, path| {
         let res = get(tostr(json), tostr(path));
@@ -141,11 +137,10 @@ fn exec_obj<'a>(json: &'a [u8], path: Path<'a>) -> (Value<'a>, Path<'a>) {
             }
             extend_json_string(&mut out, key);
             out.push(b':');
-            out.extend(res.json().as_bytes());
+            out.extend(res.data.as_ref());
             index += 1;
         }
     });
     out.push(b'}');
-    let json = unsafe { String::from_utf8_unchecked(out) };
-    (json_from_owned(json, None, INFO_OBJECT), path)
+    (json_from_owned(out, None, INFO_OBJECT), path)
 }

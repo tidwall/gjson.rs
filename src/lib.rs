@@ -12,7 +12,8 @@ pub mod tools;
 mod util;
 mod valid;
 
-use path::*;
+use path::Path;
+use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::fmt;
 use util::{pmatch, tostr, unescape};
@@ -40,7 +41,7 @@ impl PartialOrd for Kind {
 
 impl PartialEq for Kind {
     fn eq(&self, other: &Self) -> bool {
-        self.cmp(&other) == Ordering::Equal
+        self.cmp(other) == Ordering::Equal
     }
 }
 
@@ -79,9 +80,7 @@ static KINDMAP: [Kind; 256] = {
 
 /// Value is the JSON value returned from the `get` function.
 pub struct Value<'a> {
-    slice: &'a str,
-    owned: String,
-    uescstr: String,
+    data: Cow<'a, [u8]>,
     info: InfoBits,
     index: Option<usize>,
 }
@@ -96,7 +95,7 @@ impl<'a> PartialOrd for Value<'a> {
 
 impl<'a> PartialEq for Value<'a> {
     fn eq(&self, other: &Self) -> bool {
-        self.cmp(&other) == Ordering::Equal
+        self.cmp(other) == Ordering::Equal
     }
 }
 
@@ -106,7 +105,7 @@ impl<'a> Ord for Value<'a> {
         if cmp != Ordering::Equal {
             cmp
         } else if self.kind() == Kind::String {
-            self.str().cmp(other.str())
+            self.str().cmp(&other.str())
         } else if self.kind() == Kind::Number {
             let x = self.f64();
             let y = other.f64();
@@ -118,7 +117,7 @@ impl<'a> Ord for Value<'a> {
                 Ordering::Equal
             }
         } else {
-            self.json().cmp(other.json())
+            self.data.cmp(&other.data)
         }
     }
 }
@@ -126,9 +125,7 @@ impl<'a> Ord for Value<'a> {
 impl<'a> Default for Value<'a> {
     fn default() -> Self {
         return Value {
-            slice: "",
-            owned: String::default(),
-            uescstr: String::default(),
+            data: Cow::Owned(Vec::new()),
             info: 0,
             index: None,
         };
@@ -143,52 +140,31 @@ impl<'a> fmt::Display for Value<'a> {
 
 fn json_clone_from_ref<'a>(json: &'a Value<'a>) -> Value<'a> {
     Value {
-        slice: json.json(),
-        owned: String::new(),
-        uescstr: json.uescstr.to_owned(),
+        data: json.data.clone(),
         info: json.info,
         index: json.index,
     }
 }
 
 fn json_from_slice<'a>(slice: &'a [u8], index: Option<usize>, info: InfoBits) -> Value<'a> {
-    let mut json = Value {
-        slice: tostr(slice),
-        owned: String::new(),
-        uescstr: String::new(),
+    Value {
+        data: Cow::Borrowed(slice),
         info,
         index,
-    };
-    json_unescape_string(&mut json);
-    return json;
+    }
 }
 
-fn json_from_owned<'a>(owned: String, index: Option<usize>, info: InfoBits) -> Value<'a> {
-    let mut json = Value {
-        slice: "",
-        owned: owned,
-        uescstr: String::new(),
+fn json_from_owned<'a>(owned: Vec<u8>, index: Option<usize>, info: InfoBits) -> Value<'a> {
+    Value {
+        data: Cow::Owned(owned),
         info,
         index,
-    };
-    json_unescape_string(&mut json);
-    return json;
-}
-
-fn json_unescape_string<'a>(json: &mut Value<'a>) {
-    if json.info & (INFO_STRING | INFO_ESC) == (INFO_STRING | INFO_ESC) {
-        // Escaped string. We must unescape it into a new allocated string.
-        json.uescstr = unescape(json.json());
     }
 }
 
 impl<'a> Value<'a> {
     pub fn get(&'a self, path: &'a str) -> Value<'a> {
-        let mut json = if self.slice.len() > 0 {
-            get(&self.slice, path)
-        } else {
-            json_into_owned(get(&self.owned, path))
-        };
+        let mut json = unsafe { get_bytes(&self.data, path) };
         let mut index = None;
         if let Some(index1) = self.index {
             if let Some(index2) = json.index {
@@ -200,28 +176,20 @@ impl<'a> Value<'a> {
     }
 
     pub fn exists(&self) -> bool {
-        self.json().len() > 0
+        self.data.len() > 0
     }
 
     pub fn kind(&self) -> Kind {
         KINDMAP[(self.info << 24 >> 24) as usize]
     }
 
-    pub fn json(&self) -> &str {
-        if self.owned.len() > 0 {
-            self.owned.as_str()
-        } else {
-            self.slice
-        }
-    }
-
     pub fn f64(&'a self) -> f64 {
-        let raw = self.json().as_bytes();
+        let raw = &self.data;
         match self.kind() {
             Kind::True => 1.0,
             Kind::String => {
                 if self.info & INFO_ESC == INFO_ESC {
-                    raw_to_f64(&unescape(tostr(raw)))
+                    raw_to_f64(&unescape(raw))
                 } else {
                     raw_to_f64(tostr(&raw[1..raw.len() - 1]))
                 }
@@ -236,12 +204,12 @@ impl<'a> Value<'a> {
     }
 
     pub fn i64(&'a self) -> i64 {
-        let raw = self.json().as_bytes();
+        let raw = &self.data;
         match self.kind() {
             Kind::True => 1,
             Kind::String => {
                 if self.info & INFO_ESC == INFO_ESC {
-                    raw_to_i64(&unescape(tostr(raw)))
+                    raw_to_i64(&unescape(raw))
                 } else {
                     raw_to_i64(tostr(&raw[1..raw.len() - 1]))
                 }
@@ -252,12 +220,12 @@ impl<'a> Value<'a> {
     }
 
     pub fn u64(&'a self) -> u64 {
-        let raw = self.json().as_bytes();
+        let raw = &self.data;
         match self.kind() {
             Kind::True => 1,
             Kind::String => {
                 if self.info & INFO_ESC == INFO_ESC {
-                    raw_to_u64(&unescape(tostr(raw)))
+                    raw_to_u64(&unescape(raw))
                 } else {
                     raw_to_u64(tostr(&raw[1..raw.len() - 1]))
                 }
@@ -280,72 +248,80 @@ impl<'a> Value<'a> {
 
     pub fn i16(&'a self) -> i16 {
         let x = self.i64();
-        (if x < -32768 {
+        if x < -32768 {
             -32768
         } else if x > 32767 {
             32767
         } else {
-            x
-        }) as i16
+            x as i16
+        }
     }
 
     pub fn i8(&'a self) -> i8 {
         let x = self.i64();
-        (if x < -128 {
+        if x < -128 {
             -128
         } else if x > 127 {
             127
         } else {
-            x
-        }) as i8
+            x as i8
+        }
     }
 
     pub fn u32(&'a self) -> u32 {
         let x = self.u64();
-        (if x > 4294967295 { 4294967295 } else { x }) as u32
+        if x > 4294967295 {
+            4294967295
+        } else {
+            x as u32
+        }
     }
 
     pub fn u16(&'a self) -> u16 {
         let x = self.u64();
-        (if x > 65535 { 65535 } else { x }) as u16
+        if x > 65535 {
+            65535
+        } else {
+            x as u16
+        }
     }
 
     pub fn u8(&'a self) -> u8 {
         let x = self.u64();
-        (if x > 255 { 255 } else { x }) as u8
+        if x > 255 {
+            255
+        } else {
+            x as u8
+        }
     }
 
     pub fn bool(&'a self) -> bool {
-        let raw = self.json();
+        let raw = tostr(&self.data);
         match raw {
-            r#"1"# | r#"true"# => true,
-            r#"0"# | r#"false"# => false,
-
-            r#""t""# | r#""1""# | r#""T""# => true,
-            r#""f""# | r#""0""# | r#""F""# => false,
-
-            r#""true""# | r#""TRUE""# | r#""True""# => true,
-            r#""false""# | r#""FALSE""# | r#""False""# => false,
+            r#"1"# | r#"true"# | r#""t""# | r#""1""# | r#""T""# | r#""true""# | r#""TRUE""#
+            | r#""True""# => true,
+            r#"0"# | r#"false"# | r#""f""# | r#""0""# | r#""F""# | r#""false""# | r#""FALSE""#
+            | r#""False""# => false,
             _ => self.i64() != 0,
         }
     }
 
-    pub fn str(&'a self) -> &'a str {
+    pub fn str(&'a self) -> Cow<'a, str> {
         match self.kind() {
-            Kind::True => "true",
-            Kind::False => "false",
-            Kind::Object | Kind::Array | Kind::Number => self.json(),
+            Kind::True => Cow::Borrowed("true"),
+            Kind::False => Cow::Borrowed("false"),
+            Kind::Object | Kind::Array | Kind::Number => Cow::Borrowed(tostr(&self.data)),
             Kind::String => {
+                let raw = &self.data;
                 if self.info & INFO_ESC == INFO_ESC {
-                    self.uescstr.as_ref()
+                    Cow::Owned(unescape(raw))
                 } else {
-                    let raw = self.json().as_bytes();
-                    tostr(&raw[1..raw.len() - 1])
+                    Cow::Borrowed(tostr(&raw[1..raw.len() - 1]))
                 }
             }
             // Return an empty string for null. Use raw() to return the
             // raw json.
-            Kind::Null => "",
+            Kind::Null => Cow::Borrowed(""),
         }
     }
 
@@ -355,11 +331,10 @@ impl<'a> Value<'a> {
         }
         let kind = self.kind();
         if kind != Kind::Object && kind != Kind::Array {
-            iter(Value::default(), json_clone_from_ref(&self));
+            iter(Value::default(), json_clone_from_ref(self));
             return;
         }
-        let json = self.json().as_bytes();
-        for_each(json, 0, false, kind, iter);
+        for_each(&self.data, 0, false, kind, iter);
     }
 
     pub fn array(&'a self) -> Vec<Value<'a>> {
@@ -368,7 +343,7 @@ impl<'a> Value<'a> {
             self.each(|_, value| {
                 arr.push(value);
                 true
-            })
+            });
         }
         arr
     }
@@ -410,10 +385,8 @@ fn for_each<'a>(
                         break;
                     }
                 }
-            } else {
-                if !iter(Value::default(), res) {
-                    break;
-                }
+            } else if !iter(Value::default(), res) {
+                break;
             }
             index += 1;
         }
@@ -506,15 +479,14 @@ fn scan_string<'a>(json: &'a [u8], mut i: usize) -> (&'a [u8], InfoBits, usize) 
         if ch as u8 == b'"' {
             i += 1;
             return (&json[s..i], info, i);
-        } else {
-            // must be a escape character '\'
-            info |= INFO_ESC;
-            i += 1;
-            if i == json.len() {
-                break;
-            }
-            i += 1;
         }
+        // must be a escape character '\'
+        info |= INFO_ESC;
+        i += 1;
+        if i == json.len() {
+            break;
+        }
+        i += 1;
     }
     ("".as_bytes(), 0, json.len())
 }
@@ -608,7 +580,7 @@ fn proc_value<'a>(
                 } else {
                     INFO_ARRAY
                 };
-                return (json_from_slice(val, Some(s), 0 | kind), i, path);
+                return (json_from_slice(val, Some(s), kind), i, path);
             }
         } else {
             i = scan_squash(json, i).1;
@@ -692,7 +664,7 @@ fn get_obj<'a>(json: &'a [u8], mut i: usize, path: Path<'a>) -> (Value<'a>, usiz
 fn key_match(key: &[u8], info: InfoBits, path: &Path) -> bool {
     let comp = tostr(path.comp);
     if info & INFO_ESC == INFO_ESC {
-        let key = unescape(tostr(key));
+        let key = unescape(key);
         if path.pat || path.esc {
             pmatch(comp, key)
         } else {
@@ -729,7 +701,7 @@ fn get_arr<'a>(
     // value2
     // value3
     // ```
-    if path.comp.len() > 0 && path.comp[0] == b'#' {
+    if !path.comp.is_empty() && path.comp[0] == b'#' {
         if path.comp.len() == 1 {
             if path.sep == b'.' {
                 get_arr_children_with_subpath(json, i, lines, path)
@@ -757,7 +729,7 @@ fn get_arr_count<'a>(
         count += 1;
         true
     });
-    let res = json_from_owned(format!("{}", count), None, INFO_NUMBER);
+    let res = json_from_owned(Vec::from(format!("{}", count)), None, INFO_NUMBER);
     (res, i, path)
 }
 
@@ -795,7 +767,7 @@ fn query_matches<'a>(valin: &Value<'a>, op: &str, rpv: &str) -> bool {
         for c in rpv {
             if *c == b'\\' {
                 overwrite = true;
-                uesc_str = unescape(tostr(rpv));
+                uesc_str = unescape(rpv);
                 rpv = uesc_str.as_bytes();
                 break;
             }
@@ -806,14 +778,14 @@ fn query_matches<'a>(valin: &Value<'a>, op: &str, rpv: &str) -> bool {
     }
     let mut value = valin;
     let mut tvalue = Value::default();
-    if rpv.len() > 0 && rpv[0] == b'~' {
+    if !rpv.is_empty() && rpv[0] == b'~' {
         // convert to bool
         rpv = &rpv[1..];
         if value.bool() {
-            tvalue.slice = "true";
+            tvalue.data = Cow::Borrowed("true".as_bytes());
             tvalue.info = INFO_TRUE;
         } else {
-            tvalue.slice = "false";
+            tvalue.data = Cow::Borrowed("false".as_bytes());
             tvalue.info = INFO_FALSE;
         }
         value = &tvalue;
@@ -822,7 +794,7 @@ fn query_matches<'a>(valin: &Value<'a>, op: &str, rpv: &str) -> bool {
     if !value.exists() {
         return false;
     }
-    if op == "" {
+    if op.is_empty() {
         // the query is only looking for existence, such as:
         //   friends.#(name)
         // which makes sure that the array "friends" has an element of
@@ -833,12 +805,12 @@ fn query_matches<'a>(valin: &Value<'a>, op: &str, rpv: &str) -> bool {
         Kind::String => match op {
             "=" => value.str() == rpv,
             "!=" => value.str() != rpv,
-            "<" => value.str() < rpv,
-            "<=" => value.str() <= rpv,
-            ">" => value.str() > rpv,
-            ">=" => value.str() >= rpv,
-            "%" => pmatch(rpv, value.str()),
-            "!%" => !pmatch(rpv, value.str()),
+            "<" => value.str().as_ref() < rpv,
+            "<=" => value.str().as_ref() <= rpv,
+            ">" => value.str().as_ref() > rpv,
+            ">=" => value.str().as_ref() >= rpv,
+            "%" => pmatch(rpv, value.str().as_ref()),
+            "!%" => !pmatch(rpv, value.str().as_ref()),
             _ => false,
         },
         Kind::Number => {
@@ -880,10 +852,10 @@ fn get_arr_child_with_query<'a>(
     let (lh, op, rhv) = path.query_parts();
     let mut res = Value::default();
     i = for_each(json, i, lines, Kind::Array, |_, value| {
-        let is_match = if lh != "" {
-            query_matches(&value.get(lh), op, rhv)
-        } else {
+        let is_match = if lh.is_empty() {
             query_matches(&value, op, rhv)
+        } else {
+            query_matches(&value.get(lh), op, rhv)
         };
         if is_match {
             res = value;
@@ -911,14 +883,13 @@ fn get_arr_children_with_query_subpath<'a>(
         subpath = Some(r.0);
     }
     path = r.1;
-    let mut res = Vec::new();
-    res.push(b'[');
+    let mut res = vec![b'['];
     let mut index = 0;
     i = for_each(json, i, lines, Kind::Array, |_, value| {
-        let is_match = if lh != "" {
-            query_matches(&value.get(lh), op, rhv)
-        } else {
+        let is_match = if lh.is_empty() {
             query_matches(&value, op, rhv)
+        } else {
+            query_matches(&value.get(lh), op, rhv)
         };
         if is_match {
             let value = if let Some(subpath) = subpath {
@@ -930,19 +901,14 @@ fn get_arr_children_with_query_subpath<'a>(
                 if index > 0 {
                     res.push(b',');
                 }
-                res.extend(value.json().as_bytes());
+                res.extend(value.data.as_ref());
                 index += 1;
             }
         }
         true
     });
     res.push(b']');
-    let res = json_from_owned(
-        // SAFETY: buffer was constructed from known utf8 parts.
-        unsafe { String::from_utf8_unchecked(res) },
-        None,
-        INFO_ARRAY,
-    );
+    let res = json_from_owned(res, None, INFO_ARRAY);
     (res, i, path)
 }
 
@@ -955,8 +921,7 @@ fn get_arr_children_with_subpath<'a>(
     let r = path.next_group();
     let subpath = r.0;
     path = r.1;
-    let mut res = Vec::new();
-    res.push(b'[');
+    let mut res = vec![b'['];
     let mut index = 0;
     i = for_each(json, i, lines, Kind::Array, |_, value| {
         let value = value.get(subpath);
@@ -964,7 +929,7 @@ fn get_arr_children_with_subpath<'a>(
             if index > 0 {
                 res.push(b',');
             }
-            res.extend(value.json().as_bytes());
+            res.extend(value.data.as_ref());
             index += 1;
         }
         true
@@ -972,9 +937,7 @@ fn get_arr_children_with_subpath<'a>(
     res.push(b']');
     let res = json_from_owned(
         // SAFETY: buffer was constructed from known utf8 parts.
-        unsafe { String::from_utf8_unchecked(res) },
-        None,
-        INFO_ARRAY,
+        res, None, INFO_ARRAY,
     );
     (res, i, path)
 }
@@ -1062,11 +1025,7 @@ pub fn get<'a>(json: &'a str, path: &'a str) -> Value<'a> {
         return res;
     }
     let path = tostr(path.extra);
-    let mut json = if res.slice.len() > 0 {
-        get(&res.slice, path)
-    } else {
-        json_into_owned(get(&res.owned, path))
-    };
+    let mut json = get_bytes(&res.data, path);
     let mut index = None;
     if let Some(index1) = res.index {
         if let Some(index2) = json.index {
@@ -1074,7 +1033,7 @@ pub fn get<'a>(json: &'a str, path: &'a str) -> Value<'a> {
         }
     }
     json.index = index;
-    json
+    json_into_owned(json)
 }
 
 /// Searches json for the specified path.
@@ -1093,13 +1052,7 @@ pub unsafe fn get_bytes<'a>(json: &'a [u8], path: &'a str) -> Value<'a> {
 
 fn json_into_owned<'a>(json: Value) -> Value<'a> {
     Value {
-        slice: "",
-        owned: if json.slice.len() > 0 {
-            json.slice.to_owned()
-        } else {
-            json.owned
-        },
-        uescstr: json.uescstr,
+        data: Cow::Owned(json.data.into_owned()),
         info: json.info,
         index: json.index,
     }
@@ -1112,7 +1065,16 @@ fn json_into_owned<'a>(json: Value) -> Value<'a> {
 /// If you are consuming JSON from an unpredictable source then you may want to
 /// use the `valid` function first.
 pub fn parse<'a>(json: &'a str) -> Value<'a> {
-    let json = json.as_bytes();
+    parse_bytes(json.as_bytes())
+}
+
+/// Parse the json and return it as a value.
+///
+/// This function expects that the json is valid, and does not validate.
+/// Invalid json will not panic, but it may return back unexpected results.
+/// If you are consuming JSON from an unpredictable source then you may want to
+/// use the `valid` function first.
+pub fn parse_bytes<'a>(json: &'a [u8]) -> Value<'a> {
     let mut i = 0;
     while i < json.len() {
         if json[i] <= b' ' {
@@ -1122,11 +1084,11 @@ pub fn parse<'a>(json: &'a str) -> Value<'a> {
         match json[i] {
             b'{' => return json_from_slice(&json[i..], Some(i), INFO_OBJECT | INFO_FOG),
             b'[' => return json_from_slice(&json[i..], Some(i), INFO_ARRAY | INFO_FOG),
-            b't' | b'f' | b'n' | b'"' | b'0' | b'1' | b'2' => {}
-            b'3' | b'4' | b'5' | b'6' | b'7' | b'8' | b'9' | b'-' => {}
+            b't' | b'f' | b'n' | b'"' | b'0' | b'1' | b'2' | b'3' | b'4' | b'5' | b'6' | b'7'
+            | b'8' | b'9' | b'-' => {}
             _ => break,
         }
         return proc_value(json, i, Path::default(), true).0;
     }
-    return Value::default();
+    Value::default()
 }
