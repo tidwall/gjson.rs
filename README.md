@@ -1,7 +1,9 @@
 <p align="center">
-<img 
-    src="https://raw.githubusercontent.com/tidwall/gjson/master/logo.png" 
-    width="240" height="78" border="0" alt="GJSON">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tidwall/gjson/master/.github/images/logo-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tidwall/gjson/master/.github/images/logo-light.png">
+  <img src="/.github/images/logo-light.png" width="240" alt="GJSON" >
+</picture>
 <br>
 <a href="LICENSE"><img src="https://img.shields.io/crates/l/gjson.svg?style=flat-square"></a>
 <a href="https://crates.io/crates/gjson"><img src="https://img.shields.io/crates/d/gjson.svg?style=flat-square"></a>
